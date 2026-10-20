@@ -1,0 +1,9 @@
+{
+  "title": "Floria Mood Journal — Tiny Mood Tap",
+  "package": "com.jeetech.a002",
+  "coreFeature": "tap an emoji to log current mood in one second",
+  "screens": ["Onboarding", "Today", "Stats", "Settings", "Pro"],
+  "monetization": { "proUnlockIap": true, "removeAdsIap": true, "banner": true, "interstitials": false },
+  "analyticsEvents": ["app_open", "onboarding_done", "core_action", "screen_view", "paywall_view", "iap_purchase"],
+  "_note": "Filled by the Claude Code builder from the PRD + asset manifest. The factory checks this file exists to recognise a workspace."
+}

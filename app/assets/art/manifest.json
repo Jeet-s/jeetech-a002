@@ -1,0 +1,105 @@
+{
+  "style": "Premium, modern, and calm visual language with a soft cinematic glow: matte dark surfaces meet velvety gradients that blend cool indigo into fresh leaf green, with highlights kissed by a subtle bloom. Forms are simple, rounded, and geometric, with petal motifs and gentle concentric rings; edges are crisp yet softened by micro-shadow and 2–4% grain for warmth. Lighting is diffused top-front with a low-intensity rim light to lift silhouettes against deep backgrounds. Materials feel semi-translucent gel and satin-coated card; shading uses broad, low-contrast ramps and carefully masked inner shadows to suggest depth without clutter. Motion is implied through layered rings and radial gradients, evoking breathing calm. The overall mood is focused, trustworthy, and adult-friendly—no characters, no skeuomorphism—perfectly cohesive with a minimal UI and high contrast for legibility.",
+  "palette": [
+    "#0B0E11",
+    "#10151B",
+    "#5C7CFA",
+    "#6BCB77",
+    "#9AA5B1",
+    "#FFFFFF"
+  ],
+  "ui_palette": {
+    "primary": "#5C7CFA",
+    "primaryDark": "#3E5BE6",
+    "primarySoft": "#E8EDFF",
+    "accent": "#6BCB77",
+    "success": "#39B86B",
+    "warning": "#F5A623",
+    "bg": "#F7F9FC",
+    "surface": "#FFFFFF",
+    "ink": "#0B0E11",
+    "inkSoft": "#506070"
+  },
+  "assets": [
+    {
+      "id": "app_icon_primary",
+      "kind": "ui",
+      "file": "app_icon_primary.png",
+      "usage": "App icon for iOS/Android; generate adaptive/rounded variants.",
+      "width": 512,
+      "height": 510
+    },
+    {
+      "id": "splash_logo_light",
+      "kind": "ui",
+      "file": "splash_logo_light.png",
+      "usage": "Splash screen logo for light mode.",
+      "width": 508,
+      "height": 512
+    },
+    {
+      "id": "splash_logo_dark",
+      "kind": "ui",
+      "file": "splash_logo_dark.png",
+      "usage": "Splash screen logo for dark mode.",
+      "width": 512,
+      "height": 488
+    },
+    {
+      "id": "onboarding_welcome",
+      "kind": "illustration",
+      "file": "onboarding_welcome.png",
+      "usage": "Onboarding Screen 1 hero image: welcome/privacy.",
+      "width": 512,
+      "height": 508
+    },
+    {
+      "id": "onboarding_pick_moods",
+      "kind": "illustration",
+      "file": "onboarding_pick_moods.png",
+      "usage": "Onboarding Screen 2 hero: pick your moods.",
+      "width": 492,
+      "height": 512
+    },
+    {
+      "id": "onboarding_reminders",
+      "kind": "illustration",
+      "file": "onboarding_reminders.png",
+      "usage": "Onboarding Screen 3 hero: gentle reminders.",
+      "width": 512,
+      "height": 511
+    },
+    {
+      "id": "empty_calendar_history",
+      "kind": "empty_state",
+      "file": "empty_calendar_history.png",
+      "usage": "Empty state for Calendar & History list.",
+      "width": 512,
+      "height": 503
+    },
+    {
+      "id": "empty_notes",
+      "kind": "empty_state",
+      "file": "empty_notes.png",
+      "usage": "Empty state for Quick Note editor.",
+      "width": 512,
+      "height": 500
+    },
+    {
+      "id": "empty_insights",
+      "kind": "empty_state",
+      "file": "empty_insights.png",
+      "usage": "Empty state for Insights screen.",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "id": "pro_hero",
+      "kind": "hero",
+      "file": "pro_hero.png",
+      "usage": "Hero image for Pro upgrade sheet.",
+      "width": 1080,
+      "height": 720
+    }
+  ]
+}

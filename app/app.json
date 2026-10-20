@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Floria Mood Journal — Tiny Mood Tap",
+    "slug": "floria-mood-journal-tiny-mood-tap",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "android": {
+      "package": "com.jeetech.a002",
+      "versionCode": 1,
+      "permissions": [],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ]
+    },
+    "scheme": "floria-mood-journal-tiny-mood-tap",
+    "userInterfaceStyle": "light"
+  }
+}
