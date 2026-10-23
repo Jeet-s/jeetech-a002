@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Icon, MoodFace, Segmented, Sheet, Tappable, feedback, gradient, palette, radius, space, type } from "../ui";
+import { Icon, MoodFace, Segmented, Sheet, Tappable, feedback, gradient, palette, radius, space, toast, type } from "../ui";
 import { iap, type PlanItem } from "../modules/iap";
 import { useSettings } from "../modules/store";
 import { analytics } from "../modules/analytics";
@@ -53,6 +53,9 @@ export function ProSheet({ visible, from, onClose }: { visible: boolean; from: s
   const { pro, adsRemoved } = useSettings();
   const [busy, setBusy] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
+  // A lasting result line under the Restore link (a toast alone is too fleeting
+  // for a tester / user to catch — this stays until the next action).
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
 
   const livePlans = iap.plans();
   const plans = livePlans.length ? livePlans : CONFIG_PLANS;
@@ -89,6 +92,30 @@ export function ProSheet({ visible, from, onClose }: { visible: boolean; from: s
     setBusy(false);
   };
 
+  // Restore always reports back: a toast confirms restored / nothing-found /
+  // store-unreachable so the control never looks dead (it did in QA — a bare
+  // tap with no visible result). On success the `pro` effect above closes us.
+  const restore = async () => {
+    setBusy(true);
+    setRestoreMsg("Checking your purchases…");
+    const n = await iap.restore().catch(() => -1);
+    setBusy(false);
+    analytics.track("restore_purchases", { found: Math.max(0, n) });
+    if (n > 0) {
+      feedback("success", "success");
+      toast("Purchases restored");
+      setRestoreMsg("Purchases restored.");
+    } else if (n === 0) {
+      feedback("pop", "warning");
+      toast("No purchases found to restore");
+      setRestoreMsg("No previous purchases found on this account.");
+    } else {
+      feedback("error", "error");
+      toast("Couldn't reach the store — try again");
+      setRestoreMsg("Couldn't reach the store — try again.");
+    }
+  };
+
   // Opened because a free AI use was spent → lead with the reason + the fix.
   const fromQuota = from.startsWith("ai");
   const selected = plans.find((p) => p.sku === sel) ?? null;
@@ -103,7 +130,7 @@ export function ProSheet({ visible, from, onClose }: { visible: boolean; from: s
 
   return (
     <Sheet visible={visible} title="Floria Pro" onClose={onClose}>
-      <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ gap: space.lg }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ gap: space.lg }} removeClippedSubviews={false} showsVerticalScrollIndicator={false}>
         {fromQuota ? (
           <View style={styles.quota}>
             <Icon name="sparkle" size={16} color={palette.primary} />
@@ -188,7 +215,7 @@ export function ProSheet({ visible, from, onClose }: { visible: boolean; from: s
         <View style={{ gap: space.sm }}>
           <View style={styles.privacyBadge}>
             <Icon name="shield" size={14} color={palette.success} />
-            <Text style={[type.caption, { color: palette.success, fontFamily: type.bodyStrong.fontFamily }]}>Private · on-device · no ads, ever</Text>
+            <Text style={[type.caption, { color: palette.success, fontFamily: type.bodyStrong.fontFamily }]}>Private · on-device · ad-free with Pro</Text>
           </View>
           {PERKS.map((p) => (
             <View key={p.text} style={styles.perk}>
@@ -220,14 +247,6 @@ export function ProSheet({ visible, from, onClose }: { visible: boolean; from: s
             <Text style={type.caption}>Just remove ads{iap.price("remove_ads") ? ` · ${iap.price("remove_ads")}` : ""}</Text>
           </Tappable>
         ) : null}
-
-        <Text
-          style={[type.caption, { textAlign: "center" }]}
-          onPress={() => iap.restore().then((n) => analytics.track("restore_purchases", { found: n }))}
-          accessibilityRole="button"
-        >
-          Already bought it? Restore purchases
-        </Text>
       </ScrollView>
 
       {/* Sticky gradient CTA */}
@@ -243,6 +262,29 @@ export function ProSheet({ visible, from, onClose }: { visible: boolean; from: s
         </LinearGradient>
       </Tappable>
       <Text style={[type.caption, { textAlign: "center" }]}>{ctaSub}. The higher AI limit needs an active subscription.</Text>
+
+      {/* Restore lives OUTSIDE the scroll area, pinned above the keyboard line, so
+          it's always visible the moment the paywall opens — in QA it was buried
+          at the bottom of the scroll and the tester never reached it. */}
+      <Tappable
+        label="Restore purchases"
+        role="button"
+        sound={null}
+        disabled={busy}
+        onPress={restore}
+        style={styles.restore}
+      >
+        <Icon name="undo" size={15} color={palette.primary} />
+        <Text style={[type.label, { textAlign: "center", color: palette.primary }]}>
+          Already bought it? Restore purchases
+        </Text>
+      </Tappable>
+      {restoreMsg ? (
+        <View style={styles.restoreMsg}>
+          <Icon name="check" size={13} color={palette.inkSoft} />
+          <Text style={[type.caption, { color: palette.inkSoft, flex: 1 }]}>{restoreMsg}</Text>
+        </View>
+      ) : null}
     </Sheet>
   );
 }
@@ -267,6 +309,8 @@ const styles = StyleSheet.create({
   quota: { flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: palette.primarySoft, borderRadius: radius.md, padding: space.md },
   guarantee: { flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: palette.successSoft, borderRadius: radius.md, padding: space.md },
   lifetime: { alignItems: "center", paddingVertical: space.xs },
+  restore: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 44, paddingVertical: space.xs },
+  restoreMsg: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: palette.surfaceAlt, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.sm },
   ctaWrap: { marginTop: space.xs },
   cta: { height: 56, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
 });

@@ -3,7 +3,7 @@
  * from every entry, so no entry ever points at a dead tag.
  */
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Keyboard, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, EmptyState, IconButton, Sheet, Tappable, TextField, feedback, palette, radius, space, toast, type } from "../../ui";
 import { addTag, deleteTag, renameTag, setTagColor, sortedTags, validateTagName } from "../../core/moods";
 import { MAX_TAGS } from "../../core/model";
@@ -39,6 +39,9 @@ export function TagsSheet({ visible, onClose }: { visible: boolean; onClose: () 
   };
 
   const save = () => {
+    // Blur the Name field before leaving the editor, so nothing tries to scroll
+    // to a focused input that's about to unmount.
+    Keyboard.dismiss();
     const editId = typeof mode === "object" ? mode.id : undefined;
     const vErr = validateTagName(moodStore.get(), name, editId);
     if (vErr) {
@@ -65,6 +68,7 @@ export function TagsSheet({ visible, onClose }: { visible: boolean; onClose: () 
   };
 
   const remove = (id: string) => {
+    Keyboard.dismiss();
     moodStore.set(deleteTag(moodStore.get(), id));
     feedback("pop", "warning");
     toast("Tag deleted");
@@ -79,7 +83,7 @@ export function TagsSheet({ visible, onClose }: { visible: boolean; onClose: () 
           {tags.length === 0 ? (
             <EmptyState icon="tag" title="No tags yet" body="Tags like Work or Sleep add context to your entries and power your insights." />
           ) : (
-            <ScrollView style={{ maxHeight: 400 }} contentContainerStyle={{ gap: space.sm }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ maxHeight: 400 }} contentContainerStyle={{ gap: space.sm }} removeClippedSubviews={false} showsVerticalScrollIndicator={false}>
               {tags.map((t) => (
                 <View key={t.id} style={styles.row}>
                   <View style={[styles.dot, { backgroundColor: t.color ?? palette.inkMuted }]} />
@@ -106,7 +110,7 @@ export function TagsSheet({ visible, onClose }: { visible: boolean; onClose: () 
           </View>
           <Button label={editing ? "Save tag" : "Add tag"} size="lg" icon="check" onPress={save} />
           {editing ? <Button label="Delete tag" variant="danger" icon="trash" onPress={() => remove((mode as { id: string }).id)} /> : null}
-          <Button label="Back" variant="ghost" sound={null} onPress={() => setMode("list")} style={{ borderWidth: 0 }} />
+          <Button label="Back" variant="ghost" sound={null} onPress={() => { Keyboard.dismiss(); setMode("list"); }} style={{ borderWidth: 0 }} />
         </View>
       )}
     </Sheet>

@@ -4,7 +4,7 @@
  * AI-written weekly reflection drawn from the user's own notes. Advanced
  * correlations and shareable reports are Pro.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Share, StyleSheet, Text, View } from "react-native";
 import {
   BarChart,
@@ -34,14 +34,14 @@ import {
 import { rangeStats, weekSeries, weekRange, monthRange, entriesInRange, averageMood, moodToRatio, type TagCorrelation } from "../core/insights";
 import { moodById, tagById } from "../core/moods";
 import type { MoodState } from "../core/model";
-import { weekdayLabel, addDays, TIMES_OF_DAY } from "../core/dates";
+import { weekdayLabel, addDays, dayBucket, TIMES_OF_DAY } from "../core/dates";
 import { useMood } from "../core/data";
 import { useSettings } from "../modules/store";
 import { analytics } from "../modules/analytics";
 import { art } from "../art";
 import { nowISO, moodWord, scoreColor, TOD_LABEL, dateLabel } from "./shared";
 import { ai } from "../modules/ai";
-import { aiEnabled, handleAiFailure } from "./useAi";
+import { aiEnabled, handleAiFailure, reportAiOutput, AI_DISCLAIMER } from "./useAi";
 import { canExportPDF, canUseAdvancedInsights } from "../core/backup";
 import { useUiPrefs, setInsightsExpanded } from "./uiprefs";
 import { Tappable, type IconName } from "../ui";
@@ -60,14 +60,26 @@ export function InsightsScreen({ bottomInset, onPro }: { bottomInset: number; on
   }, [range]);
 
   const now = nowISO();
-  const { from, to } = range === "week" ? weekRange(now, s.prefs) : monthRange(now, s.prefs);
-  const stats = rangeStats(s, from, to, now, s.prefs);
-  const series = weekSeries(s, now, s.prefs);
-  const wk = weekRange(now, s.prefs);
-  const thisWeekAvg = averageMood(s, wk.from, wk.to, s.prefs);
-  const lastWeekAvg = averageMood(s, addDays(wk.from, -7), addDays(wk.from, -1), s.prefs);
-  const weekDelta = thisWeekAvg !== null && lastWeekAvg !== null ? thisWeekAvg - lastWeekAvg : null;
-  const weekNotes = entriesInRange(s, wk.from, wk.to, s.prefs).map((e) => e.note.trim()).filter(Boolean);
+  const today = dayBucket(now, s.prefs.dayStartHour);
+  // Every pattern here walks all entries several times (rangeStats alone is ~8
+  // passes). Recompute only when the store, range or day changes — not when the
+  // AI summary/busy state flips — so the screen stays responsive on a big store.
+  const { from, to, stats, series, lastWeekAvg, weekDelta, weekNotes } = useMemo(() => {
+    const { from, to } = range === "week" ? weekRange(now, s.prefs) : monthRange(now, s.prefs);
+    const wk = weekRange(now, s.prefs);
+    const thisWeekAvg = averageMood(s, wk.from, wk.to, s.prefs);
+    const lastWeekAvg = averageMood(s, addDays(wk.from, -7), addDays(wk.from, -1), s.prefs);
+    return {
+      from,
+      to,
+      stats: rangeStats(s, from, to, now, s.prefs),
+      series: weekSeries(s, now, s.prefs),
+      lastWeekAvg,
+      weekDelta: thisWeekAvg !== null && lastWeekAvg !== null ? thisWeekAvg - lastWeekAvg : null,
+      weekNotes: entriesInRange(s, wk.from, wk.to, s.prefs).map((e) => e.note.trim()).filter(Boolean),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s, range, today]);
 
   const genSummary = async () => {
     if (!weekNotes.length) return toast("Add notes to your entries first");
@@ -254,7 +266,18 @@ export function InsightsScreen({ bottomInset, onPro }: { bottomInset: number; on
                   <Skeleton width="68%" height={13} />
                 </View>
               ) : summary ? (
-                <Text style={[type.body, { color: palette.inkSoft }]}>{summary}</Text>
+                <>
+                  <Text style={[type.body, { color: palette.inkSoft }]}>{summary}</Text>
+                  <Tappable
+                    label="Report this AI response"
+                    sound={null}
+                    onPress={() => reportAiOutput("weekly_summary")}
+                    style={styles.reportBtn}
+                  >
+                    <Icon name="flag" size={13} color={palette.inkMuted} />
+                    <Text style={[type.caption, { color: palette.inkMuted }]}>Report this response</Text>
+                  </Tappable>
+                </>
               ) : (
                 <Text style={[type.body, { color: palette.inkSoft }]}>
                   A short, warm summary written from your own notes this week. {weekNotes.length ? "" : "Add a note to an entry to enable it."}
@@ -269,6 +292,7 @@ export function InsightsScreen({ bottomInset, onPro }: { bottomInset: number; on
                 onPress={genSummary}
               />
               <Text style={type.caption}>On-demand · 5 free a day, more with Pro. Only your note text is sent.</Text>
+              <Text style={type.caption}>{AI_DISCLAIMER}</Text>
             </Card>
           ) : null}
 
@@ -433,6 +457,7 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: "row", alignItems: "center", gap: space.md },
   linkRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   aiHead: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  reportBtn: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", minHeight: 32 },
   moreBtn: { flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: palette.primarySoft, borderRadius: radius.md, paddingHorizontal: space.md, minHeight: 48 },
   hiRow: { flexDirection: "row", alignItems: "center", gap: space.md },
   hiIcon: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },

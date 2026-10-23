@@ -1,11 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { Canvas, Circle, Group, Path, Skia } from "@shopify/react-native-skia";
 import { categorical, palette, radius, space, type } from "./theme";
 
-/** Animated circular progress (0..1) with a centred label. */
-export function ProgressRing({
+/**
+ * Animated circular progress (0..1) with a centred label. Memoised: it's a Skia
+ * <Canvas> on the Home/Insights hero that would otherwise redraw on every store
+ * change (each mood tap). Primitive props → the shallow compare skips the redraw
+ * unless the value/label actually changed. Key to keeping the soak test responsive.
+ */
+export const ProgressRing = memo(function ProgressRing({
   value,
   size = 120,
   stroke = 12,
@@ -53,7 +58,7 @@ export function ProgressRing({
       </View>
     </View>
   );
-}
+});
 
 function Bar({ frac, color, height }: { frac: number; color: string; height: number }) {
   const h = useSharedValue(0);

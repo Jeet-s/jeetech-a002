@@ -4,7 +4,7 @@
  * offers a note, plus a 5-second Undo), and today's entries with swipe actions.
  * Everything else in the app orbits this screen.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-reanimated";
 import {
@@ -34,7 +34,7 @@ import { moodStore, useMood } from "../core/data";
 import { analytics } from "../modules/analytics";
 import { MoodToken, EntryRow } from "./components";
 import { EntrySheet, type EntryTarget } from "./EntrySheet";
-import { nowISO, dateLabelLong, moodWord } from "./shared";
+import { nowISO, dateLabelLong, moodWord, timeLabel } from "./shared";
 
 /** Streaks worth a confetti burst — keeps the celebration rare and meaningful. */
 const STREAK_MILESTONES = new Set([3, 7, 14, 21, 30, 50, 75, 100, 150, 200, 300, 365]);
@@ -42,7 +42,10 @@ const STREAK_MILESTONES = new Set([3, 7, 14, 21, 30, 50, 75, 100, 150, 200, 300,
 /** Cap on today's rows mounted at once (each is a Swipeable) — bounds the heap. */
 const MAX_TODAY_ROWS = 24;
 
-type JustLogged = { id: string; moodId: string };
+// `n` is a per-tap nonce: it bumps on EVERY mood tap (even a de-duped re-tap of
+// the same mood) so the confirmation card re-mounts and re-animates each time —
+// the screen always visibly acknowledges the tap, never looks frozen.
+type JustLogged = { id: string; moodId: string; n: number };
 
 export function HomeScreen({ bottomInset, onPro, onOpenSettings }: { bottomInset: number; onPro: (from: string) => void; onOpenSettings?: () => void }) {
   const s = useMood();
@@ -50,23 +53,32 @@ export function HomeScreen({ bottomInset, onPro, onOpenSettings }: { bottomInset
   const [burst, setBurst] = useState(0);
   const [just, setJust] = useState<JustLogged | null>(null);
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nonce = useRef(0);
 
   useEffect(() => () => { if (clearTimer.current) clearTimeout(clearTimer.current); }, []);
 
   const now = nowISO();
   const today = dayBucket(now, s.prefs.dayStartHour);
   const moods = activeMoods(s);
-  const todays = entriesOnDay(s, today, s.prefs);
-  const streak = currentStreak(s, now, s.prefs);
-  const best = bestStreak(s, s.prefs);
-  const { from, to } = weekRange(now, s.prefs);
-  const weekAvg = averageMood(s, from, to, s.prefs);
-  const loggedToday = loggedTodayRatio(s, now, s.prefs) > 0;
-  const hasAny = s.entries.some((e) => !e.deleted);
+  // All entry-wide stats recompute only when the store or the current day
+  // changes — never on a mood tap flipping `just`/`burst`/`target`. Keeps the
+  // one-tap log path free of O(n) work on the JS thread.
+  const { todays, streak, best, weekAvg, loggedToday, hasAny } = useMemo(() => {
+    const { from, to } = weekRange(now, s.prefs);
+    return {
+      todays: entriesOnDay(s, today, s.prefs),
+      streak: currentStreak(s, now, s.prefs),
+      best: bestStreak(s, s.prefs),
+      weekAvg: averageMood(s, from, to, s.prefs),
+      loggedToday: loggedTodayRatio(s, now, s.prefs) > 0,
+      hasAny: s.entries.some((e) => !e.deleted),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s, today]);
 
-  const flagJust = (j: JustLogged | null) => {
+  const flagJust = (j: Omit<JustLogged, "n"> | null) => {
     if (clearTimer.current) clearTimeout(clearTimer.current);
-    setJust(j);
+    setJust(j ? { ...j, n: ++nonce.current } : null);
     if (j) clearTimer.current = setTimeout(() => setJust(null), 7000);
   };
 
@@ -85,14 +97,20 @@ export function HomeScreen({ bottomInset, onPro, onOpenSettings }: { bottomInset
     // confirmation stays up — so every tap feels acknowledged, never silent.
     if (r.deduped) {
       feedback("pop", "light");
+      // Re-flag (bumps the nonce) so the confirmation card re-animates, and say
+      // so out loud — a rapid re-tap of the same mood is acknowledged, never silent.
       flagJust({ id, moodId });
+      const name = moodById(s, moodId)?.name ?? "that mood";
+      toast(`Already logged · ${name}`);
       return;
     }
     feedback("success", "success");
     analytics.track("core_action", { feature: "log_mood" });
     flagJust({ id, moodId });
     // Celebrate the aha (first ever) and real streak milestones only — not every day, so confetti stays special.
-    const newStreak = currentStreak(r.state, nowISO(), s.prefs);
+    // Re-logging a day already covered can't change the streak, so skip the
+    // extra O(n) streak pass on that hot path (keeps rapid taps cheap).
+    const newStreak = wasLoggedToday ? streak : currentStreak(r.state, nowISO(), s.prefs);
     const milestone = !wasLoggedToday && !firstEver && STREAK_MILESTONES.has(newStreak);
     if (!wasLoggedToday && (firstEver || milestone)) setBurst((b) => b + 1);
     toast(milestone ? `${newStreak}-day streak! 🎉` : "Mood saved", {
@@ -118,6 +136,12 @@ export function HomeScreen({ bottomInset, onPro, onOpenSettings }: { bottomInset
 
   const openNote = (id: string) => { flagJust(null); setTarget({ kind: "edit", id }); };
   const justMood = just ? moodById(s, just.moodId) : undefined;
+  // Persistent, above-the-fold proof that a tap landed: a live count of today's
+  // entries and the most recent time. Both sit right above the mood grid and
+  // recompute on every save, so even an identical re-tap of the same mood
+  // leaves a visible change here (the count climbs) — the fix for "taps had no
+  // visible effect" when the new row scrolled in below the fold.
+  const lastTime = todays[0] ? timeLabel(todays[0].timestamp) : null;
 
   const heroValue = !hasAny ? "Hi there" : `${streak}`;
   const heroOverline = !hasAny ? "Welcome to Floria" : streak > 0 ? "Current streak" : "Today";
@@ -161,17 +185,35 @@ export function HomeScreen({ bottomInset, onPro, onOpenSettings }: { bottomInset
                 <Text style={type.heading}>How are you feeling?</Text>
                 <Text style={[type.caption, { marginTop: 1 }]}>One tap saves it — press & hold to add a note.</Text>
               </View>
+              {/* Live today-counter: climbs on every save and stays on screen, so
+                  the tap always produces a visible, lasting change up here. */}
+              <View style={styles.todayRow}>
+                <View style={[styles.statPill, loggedToday && styles.statPillOn]}>
+                  <Icon name="check" size={13} color={loggedToday ? palette.success : palette.inkMuted} />
+                  <Text style={[type.label, { color: loggedToday ? palette.ink : palette.inkMuted }]} numberOfLines={1}>
+                    {todays.length === 0 ? "None logged yet today" : `${todays.length} logged today`}
+                  </Text>
+                </View>
+                {lastTime ? (
+                  <View style={styles.statPill}>
+                    <Text style={[type.caption, { color: palette.inkSoft }]}>Last</Text>
+                    <Text style={[type.label, { color: palette.ink, fontVariant: ["tabular-nums"] }]}>{lastTime}</Text>
+                  </View>
+                ) : null}
+              </View>
               <View style={styles.grid}>
                 {moods.map((m) => (
-                  <MoodToken key={m.id} mood={m} size={56} onPress={() => log(m.id)} onLongPress={() => quickAdd(m.id)} />
+                  // The most recently logged mood shows a check so a single tap
+                  // leaves an unmistakable, persistent mark right on the grid.
+                  <MoodToken key={m.id} mood={m} size={56} selected={just?.moodId === m.id} onPress={() => log(m.id)} onLongPress={() => quickAdd(m.id)} />
                 ))}
               </View>
 
               {just && justMood ? (
-                // Keyed by the logged entry so a fresh tap mounts cleanly (one
-                // crossfade, never two overlapping); no exit so it can't linger
-                // under the next confirmation.
-                <Animated.View key={just.id} entering={FadeInDown.duration(220)}>
+                // Keyed by the per-tap nonce so EVERY mood tap re-mounts this
+                // cleanly (one crossfade, never two overlapping) — the screen
+                // visibly acknowledges each tap, even a de-duped re-tap.
+                <Animated.View key={just.n} entering={FadeInDown.duration(220)}>
                   <Tappable label={`Logged as ${justMood.name}. Add a note`} onPress={() => openNote(just.id)} style={styles.confirm}>
                     <View style={styles.confirmCheck}>
                       <Icon name="check" size={15} color="#fff" />
@@ -194,6 +236,16 @@ export function HomeScreen({ bottomInset, onPro, onOpenSettings }: { bottomInset
               )}
             </>
           }
+        />
+
+        {/* Always-visible route to a richer entry (multiple moods, tags and a
+            note). Kept directly under the hero — not buried at the end of the
+            list — so detailed logging is one obvious tap from Home. */}
+        <Button
+          label="Add a detailed entry"
+          variant="secondary"
+          icon="plus"
+          onPress={() => setTarget({ kind: "new" })}
         />
 
         <SectionHeader
@@ -266,6 +318,9 @@ const styles = StyleSheet.create({
   trust: { flexDirection: "row", alignItems: "center", gap: space.xs, backgroundColor: palette.surfaceAlt, borderRadius: radius.pill, paddingHorizontal: space.md, minHeight: 36, marginBottom: space.xs },
   trustDivider: { width: 1, height: 14, backgroundColor: palette.border, marginHorizontal: 4 },
   trayHead: { gap: 0 },
+  todayRow: { flexDirection: "row", alignItems: "center", gap: space.xs, flexWrap: "wrap" },
+  statPill: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: palette.surfaceAlt, borderRadius: radius.pill, paddingHorizontal: 10, minHeight: 30 },
+  statPillOn: { backgroundColor: palette.successSoft },
   heroCheck: { width: 16, height: 16, borderRadius: 8, backgroundColor: palette.success, alignItems: "center", justifyContent: "center" },
   grid: { flexDirection: "row", justifyContent: "space-between" },
   confirm: { flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: palette.successSoft, borderRadius: radius.md, padding: space.sm + 2 },

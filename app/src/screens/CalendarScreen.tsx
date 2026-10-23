@@ -3,10 +3,10 @@
  * day), a monthly summary row, a collapsible mood-scale legend, and a day-detail
  * sheet to review, edit, and backfill entries for any past day.
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Button, Card, EmptyState, IconButton, LineChart, MoodFace, Screen, Sheet, Stat, Tappable, moodSoft, palette, radius, shadow, space, type } from "../ui";
-import { entriesOnDay, entriesInRange, dayAverage, averageMood, bestStreak, bucketOf } from "../core/insights";
+import { entriesOnDay, averageMood, bestStreak, dayAggregates } from "../core/insights";
 import { dayBucket, parseDateTime, addDays, weekdayLabel } from "../core/dates";
 import { useMood } from "../core/data";
 import { art } from "../art";
@@ -29,13 +29,23 @@ export function CalendarScreen({ bottomInset, onPro }: { bottomInset: number; on
   const daysIn = new Date(Date.UTC(view.y, view.mo, 0)).getUTCDate();
   const firstWd = new Date(Date.UTC(view.y, view.mo - 1, 1)).getUTCDay();
   const isCurrentMonth = view.y === tp.y && view.mo === tp.mo;
-  const hasAny = s.entries.some((e) => !e.deleted);
 
   const mFrom = `${view.y}-${pad(view.mo)}-01`;
   const mTo = `${view.y}-${pad(view.mo)}-${pad(daysIn)}`;
-  const monthAvg = averageMood(s, mFrom, mTo, s.prefs);
-  const monthDays = new Set(entriesInRange(s, mFrom, mTo, s.prefs).map((e) => bucketOf(e, s.prefs))).size;
-  const best = bestStreak(s, s.prefs);
+
+  // One linear pass over the store, reused by every grid cell and the sparkline
+  // (was ~84 full filter+sort passes per render — the Calendar ANR). Memoised on
+  // the store, so panning months or opening the day sheet never recomputes it.
+  const byDay = useMemo(() => dayAggregates(s, s.prefs), [s]);
+  const hasAny = useMemo(() => s.entries.some((e) => !e.deleted), [s]);
+  const { monthAvg, monthDays, best } = useMemo(
+    () => ({
+      monthAvg: averageMood(s, mFrom, mTo, s.prefs),
+      monthDays: [...byDay.keys()].filter((k) => k >= mFrom && k <= mTo).length,
+      best: bestStreak(s, s.prefs),
+    }),
+    [s, byDay, mFrom, mTo],
+  );
 
   const shift = (d: number) => {
     const m = view.mo - 1 + d;
@@ -50,12 +60,12 @@ export function CalendarScreen({ bottomInset, onPro }: { bottomInset: number; on
   for (let d = 1; d <= daysIn; d++) cells.push(`${view.y}-${pad(view.mo)}-${pad(d)}`);
 
   const dayEntries = day ? entriesOnDay(s, day, s.prefs) : [];
-  const daySheetAvg = day ? dayAverage(s, day, s.prefs) : null;
+  const daySheetAvg = day ? byDay.get(day)?.avg ?? null : null;
   // A 7-day sparkline ending on the selected day — the trend around it at a glance.
   const spark = day
     ? Array.from({ length: 7 }, (_, k) => {
         const key = addDays(day, -(6 - k));
-        return { label: weekdayLabel(key).slice(0, 1), value: dayAverage(s, key, s.prefs) };
+        return { label: weekdayLabel(key).slice(0, 1), value: byDay.get(key)?.avg ?? null };
       })
     : [];
   const sparkHasData = spark.some((p) => p.value !== null);
@@ -79,8 +89,9 @@ export function CalendarScreen({ bottomInset, onPro }: { bottomInset: number; on
           <View style={styles.grid}>
             {cells.map((key, i) => {
               if (!key) return <View key={`e${i}`} style={styles.cell} />;
-              const avg = dayAverage(s, key, s.prefs);
-              const count = entriesOnDay(s, key, s.prefs).length;
+              const agg = byDay.get(key);
+              const avg = agg ? agg.avg : null;
+              const count = agg ? agg.count : 0;
               const future = key > todayBucket;
               const isToday = key === todayBucket;
               const isSel = key === day;

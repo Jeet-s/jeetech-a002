@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { StyleSheet, useWindowDimensions } from "react-native";
+import { StyleSheet, View, useWindowDimensions } from "react-native";
 import { Canvas, Group, RoundedRect, Circle } from "@shopify/react-native-skia";
 import { Easing, useDerivedValue, useSharedValue, withTiming, type SharedValue } from "react-native-reanimated";
 import { palette } from "../ui/theme";
@@ -63,11 +63,16 @@ export function Confetti({ trigger, count = 70, origin }: { trigger: number; cou
   }, [trigger, t]);
   const ox = origin?.x ?? width / 2;
   const oy = origin?.y ?? height * 0.42;
+  // Wrapped in a pointerEvents="none" View as well as the Canvas: the celebration
+  // is purely decorative and must NEVER intercept a tap on the mood grid behind
+  // it (a rapid log right after a milestone has to go straight through).
   return (
-    <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-      {particles.map((p, i) => (
-        <Particle key={i} p={p} t={t} ox={ox} oy={oy} />
-      ))}
-    </Canvas>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+        {particles.map((p, i) => (
+          <Particle key={i} p={p} t={t} ox={ox} oy={oy} />
+        ))}
+      </Canvas>
+    </View>
   );
 }

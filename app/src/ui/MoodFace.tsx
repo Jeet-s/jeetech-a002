@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { View, type ViewStyle } from "react-native";
 import { Canvas, Circle, Group, Path, RoundedRect, Skia } from "@shopify/react-native-skia";
 import { moodColor, moodFaceInk, moodSoft } from "./theme";
@@ -41,7 +41,14 @@ const FACES: Record<number, FaceGeom> = {
 
 const level = (score: number) => Math.max(1, Math.min(5, Math.round(score)));
 
-export function MoodFace({
+/**
+ * Memoised: this is a Skia <Canvas>, and the app mounts dozens at once (Home
+ * grid + entry rows, the whole calendar month). Without memo, any store change
+ * (every mood tap) redrew EVERY face — the JS thread couldn't keep up under the
+ * random-tap soak and went Not Responding. Props are primitive, so the shallow
+ * compare skips the redraw unless this face's own score/colour/size changed.
+ */
+export const MoodFace = memo(function MoodFace({
   score,
   color,
   size = 56,
@@ -111,4 +118,4 @@ export function MoodFace({
       </Canvas>
     </View>
   );
-}
+});

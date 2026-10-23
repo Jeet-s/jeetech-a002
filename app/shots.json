@@ -5,6 +5,6 @@
     { "id": "calendar", "caption": "Every day at a glance" },
     { "id": "insights", "caption": "Clear patterns, zero setup" },
     { "id": "entry", "caption": "Notes, tags, intensity" },
-    { "id": "pro", "caption": "Private, no ads, yours" }
+    { "id": "pro", "caption": "Go ad-free with Pro" }
   ]
 }

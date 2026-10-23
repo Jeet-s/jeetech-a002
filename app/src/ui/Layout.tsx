@@ -44,7 +44,7 @@ export function Screen({
   return (
     <View style={styles.root}>
       {scroll ? (
-        <ScrollView contentContainerStyle={[styles.content, pad, contentStyle]} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[styles.content, pad, contentStyle]} keyboardShouldPersistTaps="handled" removeClippedSubviews={false}>
           {header}
           {children}
         </ScrollView>
@@ -109,6 +109,7 @@ export function FooterScreen({
         <ScrollView
           contentContainerStyle={[styles.footerBody, { minHeight: box }, contentStyle]}
           keyboardShouldPersistTaps="handled"
+          removeClippedSubviews={false}
           showsVerticalScrollIndicator={edge.below || edge.above}
           scrollEventThrottle={32}
           onScroll={onScroll}

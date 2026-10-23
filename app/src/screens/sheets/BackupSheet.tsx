@@ -5,7 +5,7 @@
  * unsupported files. Every backup/restore is written to the audit log.
  */
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Share, Text, View } from "react-native";
+import { Alert, Keyboard, ScrollView, StyleSheet, Share, Text, View } from "react-native";
 import { Button, Card, Icon, Pill, Sheet, TextField, feedback, palette, radius, space, toast, type } from "../../ui";
 import { createBackup, restoreBackup, exportAuditJSON, validateBackup, type BackupPreview } from "../../core/backup";
 import type { BackupPayload } from "../../core/model";
@@ -19,19 +19,29 @@ export function BackupSheet({ visible, onClose }: { visible: boolean; onClose: (
   const [paste, setPaste] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<BackupPreview | null>(null);
+  const [lastPayload, setLastPayload] = useState<BackupPayload | null>(null);
   const lastBackup = s.backups[0];
 
-  const create = async () => {
+  // Create the backup and show the result IN the app — the record count ticks up
+  // and a "Saved" state appears instantly. We no longer auto-open the system
+  // share sheet (that bounced the app out of the foreground on every tap in QA);
+  // sharing the file off-device is now the explicit button below.
+  const create = () => {
     const { state, payload } = createBackup(moodStore.get(), nowISO());
     moodStore.set(state);
+    setLastPayload(payload);
     analytics.track("backup_created");
     feedback("success", "success");
+    toast("Backup created — saved on this device");
+  };
+
+  const shareBackup = async () => {
+    if (!lastPayload) return;
     try {
-      await Share.share({ message: JSON.stringify(payload), title: "Floria backup" });
+      await Share.share({ message: JSON.stringify(lastPayload), title: "Floria backup" });
     } catch {
       /* cancelled */
     }
-    toast("Backup created");
   };
 
   const parsePayload = (): BackupPayload | null => {
@@ -59,6 +69,9 @@ export function BackupSheet({ visible, onClose }: { visible: boolean; onClose: (
   };
 
   const doRestore = () => {
+    // Drop focus off the paste field before the confirm dialog / sheet teardown
+    // can unmount it out from under the keyboard.
+    Keyboard.dismiss();
     analytics.track("restore_attempt");
     const payload = parsePayload();
     const v = validateBackup(payload);
@@ -109,7 +122,7 @@ export function BackupSheet({ visible, onClose }: { visible: boolean; onClose: (
   return (
     <Sheet visible={visible} onClose={onClose} title={mode === "home" ? "Backup & restore" : "Restore a backup"}>
       {mode === "home" ? (
-        <ScrollView style={{ maxHeight: 440 }} contentContainerStyle={{ gap: space.lg }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ maxHeight: 440 }} contentContainerStyle={{ gap: space.lg }} removeClippedSubviews={false} showsVerticalScrollIndicator={false}>
           {/* Last-backup status, front and centre so it's obvious whether you're covered. */}
           <View style={[styles.status, lastBackup ? styles.statusOk : styles.statusWarn]}>
             <Icon name={lastBackup ? "shield" : "bell"} size={18} color={lastBackup ? palette.success : palette.warning} />
@@ -131,6 +144,15 @@ export function BackupSheet({ visible, onClose }: { visible: boolean; onClose: (
           </View>
 
           <Button label="Create backup" icon="download" size="lg" onPress={create} />
+          {lastPayload ? (
+            <View style={styles.saved}>
+              <Icon name="check" size={16} color={palette.success} />
+              <Text style={[type.caption, { flex: 1, color: palette.inkSoft }]}>
+                Saved on this device. Share it to Files or Drive to keep an off-device copy.
+              </Text>
+              <Button label="Share file" variant="secondary" size="sm" icon="download" onPress={shareBackup} />
+            </View>
+          ) : null}
           <Button label="Restore from a backup" icon="undo" variant="secondary" onPress={() => { setPaste(""); setError(null); setPreview(null); setMode("restore"); }} />
 
           <View style={{ gap: space.sm }}>
@@ -187,7 +209,7 @@ export function BackupSheet({ visible, onClose }: { visible: boolean; onClose: (
           ) : null}
           <Button label="Test restore (no changes)" icon="shield" variant="secondary" disabled={!paste.trim()} onPress={testRestore} />
           <Button label="Restore" size="lg" icon="undo" disabled={!paste.trim()} onPress={doRestore} />
-          <Button label="Back" variant="ghost" sound={null} onPress={() => { setPreview(null); setMode("home"); }} style={{ borderWidth: 0 }} />
+          <Button label="Back" variant="ghost" sound={null} onPress={() => { Keyboard.dismiss(); setPreview(null); setMode("home"); }} style={{ borderWidth: 0 }} />
         </View>
       )}
     </Sheet>
@@ -201,4 +223,5 @@ const styles = StyleSheet.create({
   statusOk: { backgroundColor: palette.successSoft },
   statusWarn: { backgroundColor: palette.warningSoft },
   note: { backgroundColor: palette.surfaceAlt, borderRadius: radius.md, padding: space.md },
+  saved: { flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: palette.successSoft, borderRadius: radius.md, padding: space.md },
 });

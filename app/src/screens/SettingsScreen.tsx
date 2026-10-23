@@ -4,7 +4,7 @@
  * delete-all. A thin router opens each manager as a sheet.
  */
 import { useState } from "react";
-import { Alert, Linking, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   AccountSheet,
   Button,
@@ -15,6 +15,7 @@ import {
   SectionHeader,
   Sheet,
   Toggle,
+  feedback,
   palette,
   space,
   toast,
@@ -27,6 +28,7 @@ import { iap } from "../modules/iap";
 import { moodStore, useMood, pullMoodAfterSignIn, syncMoodNow } from "../core/data";
 import { activeMoods, sortedTags } from "../core/moods";
 import product from "../../product.json";
+import cloudConfig from "../../cloud.json";
 import { MoodsSheet } from "./sheets/MoodsSheet";
 import { TagsSheet } from "./sheets/TagsSheet";
 import { RemindersSheet } from "./sheets/RemindersSheet";
@@ -39,19 +41,60 @@ import { clockLabel } from "./shared";
 
 type SheetId = "moods" | "tags" | "reminders" | "security" | "backup" | "export" | "prefs" | "account" | "privacy" | null;
 
-const PRIVACY = [
-  "Your journal lives on this device. No account is required to use Floria.",
-  "Your PIN is never stored — only a salted, one-way hash. Forgetting it is recoverable by restoring a backup.",
-  "AI features are opt-in and send only the note text you choose — never your media, moods or identity.",
-  "Cloud backup (Pro) is encrypted in transit and at rest, but is not end-to-end encrypted.",
-  "You can export everything, or delete all data, at any time.",
+// In-app privacy disclosure. Names the SDKs, the data each handles and how to
+// delete it, so Settings is a sufficient, self-contained privacy statement
+// (Play policy for apps with ads, cloud sync and AI). Mirrors the hosted policy.
+const PRIVACY: { title: string; lines: string[] }[] = [
+  {
+    title: "On this device",
+    lines: [
+      "Your journal, moods, tags and notes live on this phone. No account is required to use Floria.",
+      "Your PIN is never stored — only a salted, one-way hash. Forgetting it is recoverable by restoring a backup.",
+    ],
+  },
+  {
+    title: "Cloud backup & sync (Pro)",
+    lines: [
+      "When you sign in with an email code, your journal is synced to our cloud so it is available on another phone.",
+      "It is encrypted in transit and at rest, but is not end-to-end encrypted — we can technically access it to run the service.",
+      "Delete your account anytime (in Account, or the web link) to remove everything from the cloud.",
+    ],
+  },
+  {
+    title: "AI reflections",
+    lines: [
+      "AI features are opt-in and send only the note text you choose to our AI provider — never your media, moods, tags or identity.",
+      "AI reflections are for self-reflection only — not medical, diagnostic or treatment advice.",
+      "You can report an offensive or wrong AI response from the reflection and sentiment screens.",
+    ],
+  },
+  {
+    title: "Ads (free tier)",
+    lines: [
+      "Free users see a single banner ad from Google AdMob. We ask for your consent (UMP) before any ad request, and AdMob may use an advertising identifier.",
+      "Ads never surprise you: none on launch, exit or mid-task, and they never cover your controls. We don't show interstitials, and any rewarded ad is strictly opt-in — only after you tap to watch one.",
+      "Pro and Remove Ads turn ads off entirely.",
+    ],
+  },
+  {
+    title: "Your controls",
+    lines: [
+      "Export everything to CSV or JSON, delete all on-device data, or delete your cloud account — anytime, free.",
+    ],
+  },
 ];
+
+// Hosted privacy policy (same App Cloud host as account deletion). It names the
+// SDKs, the data collected and the deletion process; linked here per Play policy.
+const privacyPolicyUrl = cloudConfig.apiUrl ? `${cloudConfig.apiUrl}/legal/privacy?app=${encodeURIComponent(cloudConfig.app)}` : null;
 
 export function SettingsScreen({ bottomInset, onPro }: { bottomInset: number; onPro: (from: string) => void }) {
   const s = useSettings();
   const mood = useMood();
   const user = useCloudUser();
   const [sheet, setSheet] = useState<SheetId>(null);
+  // Last restore result, shown as a lasting subtitle so the row never looks dead.
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
   const close = () => setSheet(null);
 
   const moodCount = activeMoods(mood).length;
@@ -69,27 +112,33 @@ export function SettingsScreen({ bottomInset, onPro }: { bottomInset: number; on
     <>
       <Screen title="Settings" bottomInset={bottomInset}>
         {cloud.online && cloud.emailSignIn ? (
-          <Card padded={false} style={styles.group}>
-            <ListItem
-              icon="cloud"
-              title={user && !user.anonymous ? "Account & cloud backup" : "Back up to the cloud"}
-              subtitle={user && !user.anonymous ? user.email ?? "Signed in" : cloud.proOnly && !s.pro ? "Pro · sign in to sync across phones" : "Sign in with email to sync across phones"}
-              trailing={user && !user.anonymous ? <Pill label="Synced" tone="success" /> : undefined}
-              onPress={() => (cloud.proOnly && !s.pro ? onPro("cloud") : setSheet("account"))}
-            />
-            {cloud.enabled && user && !user.anonymous ? (
+          <>
+            <SectionHeader title="Account" />
+            <Card padded={false} style={styles.group}>
+              {/* Always opens the sign-in sheet directly — the email-code step is
+                  never hidden behind the paywall. Syncing across phones is the Pro
+                  perk; creating the account and backing up is reachable here. */}
               <ListItem
-                icon="undo"
-                title="Sync now"
-                subtitle="Auto-syncs after every change · encrypted in transit & at rest"
-                onPress={async () => {
-                  toast("Syncing…");
-                  await syncMoodNow().catch(() => {});
-                  toast("Backed up to the cloud");
-                }}
+                icon="cloud"
+                title={user && !user.anonymous ? "Account & cloud backup" : "Sign in to back up & sync"}
+                subtitle={user && !user.anonymous ? user.email ?? "Signed in" : "Email-code sign-in · no account needed to use Floria"}
+                trailing={user && !user.anonymous ? <Pill label="Synced" tone="success" /> : undefined}
+                onPress={() => setSheet("account")}
               />
-            ) : null}
-          </Card>
+              {user && !user.anonymous ? (
+                <ListItem
+                  icon="undo"
+                  title="Sync now"
+                  subtitle="Auto-syncs after every change · encrypted in transit & at rest"
+                  onPress={async () => {
+                    toast("Syncing…");
+                    await syncMoodNow().catch(() => {});
+                    toast("Backed up to the cloud");
+                  }}
+                />
+              ) : null}
+            </Card>
+          </>
         ) : null}
 
         <Card padded={false} style={styles.group}>
@@ -114,7 +163,7 @@ export function SettingsScreen({ bottomInset, onPro }: { bottomInset: number; on
           <ListItem icon="lock" title="App lock" subtitle={mood.lock.enabled ? "PIN on" : "Off · free PIN & biometric"} onPress={() => setSheet("security")} />
           <ListItem icon="cloud" title="Backup & restore" subtitle={mood.backups.length ? `${mood.backups.length} saved` : "No backups yet"} onPress={() => setSheet("backup")} />
           <ListItem icon="download" title="Export data" subtitle="CSV / JSON — never locked" onPress={() => setSheet("export")} />
-          <ListItem icon="shield" title="Privacy" subtitle="How your data is protected" onPress={() => setSheet("privacy")} />
+          <ListItem icon="shield" title="Privacy & data" subtitle="SDKs, AI, ads & how to delete your data" onPress={() => setSheet("privacy")} />
           <ListItem icon="trash" title="Delete all data" destructive onPress={deleteAll} />
         </Card>
 
@@ -126,7 +175,31 @@ export function SettingsScreen({ bottomInset, onPro }: { bottomInset: number; on
 
         <SectionHeader title="Purchases" />
         <Card padded={false} style={styles.group}>
-          <ListItem icon="undo" title="Restore purchases" onPress={async () => { const n = await iap.restore().catch(() => 0); toast(n ? "Purchases restored" : "No purchases found"); }} />
+          <ListItem
+            icon="undo"
+            title="Restore purchases"
+            subtitle={restoreMsg ?? "Re-add a past purchase on this device"}
+            onPress={async () => {
+              // Always report back so the control never looks dead: a visible
+              // toast AND a lasting subtitle for restored / nothing / unreachable.
+              setRestoreMsg("Checking your purchases…");
+              toast("Checking your purchases…");
+              const n = await iap.restore().catch(() => -1);
+              if (n > 0) {
+                feedback("success", "success");
+                toast("Purchases restored");
+                setRestoreMsg("Purchases restored.");
+              } else if (n === 0) {
+                feedback("pop", "warning");
+                toast("Nothing to restore");
+                setRestoreMsg("No previous purchases found.");
+              } else {
+                feedback("error", "error");
+                toast("Couldn't reach the store — try again");
+                setRestoreMsg("Couldn't reach the store — try again.");
+              }
+            }}
+          />
         </Card>
 
         <View style={styles.footer}>
@@ -148,16 +221,29 @@ export function SettingsScreen({ bottomInset, onPro }: { bottomInset: number; on
         onSignedIn={(r) => pullMoodAfterSignIn(r.switched)}
       />
 
-      <Sheet visible={sheet === "privacy"} onClose={close} title="Your privacy">
-        <View style={{ gap: space.md }}>
-          {PRIVACY.map((p, i) => (
-            <View key={i} style={styles.privRow}>
-              <Text style={[type.body, { color: palette.primary }]}>•</Text>
-              <Text style={[type.body, { color: palette.inkSoft, flex: 1 }]}>{p}</Text>
+      <Sheet visible={sheet === "privacy"} onClose={close} title="Privacy & data">
+        <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ gap: space.lg }} removeClippedSubviews={false} showsVerticalScrollIndicator={false}>
+          {PRIVACY.map((section) => (
+            <View key={section.title} style={{ gap: space.sm }}>
+              <Text style={[type.label, { color: palette.ink }]}>{section.title}</Text>
+              {section.lines.map((line, i) => (
+                <View key={i} style={styles.privRow}>
+                  <Text style={[type.body, { color: palette.primary }]}>•</Text>
+                  <Text style={[type.body, { color: palette.inkSoft, flex: 1 }]}>{line}</Text>
+                </View>
+              ))}
             </View>
           ))}
-          <Button label="Close" variant="secondary" onPress={close} />
-        </View>
+          {privacyPolicyUrl ? (
+            <Button
+              label="Read the full privacy policy"
+              variant="secondary"
+              icon="shield"
+              onPress={() => Linking.openURL(privacyPolicyUrl).catch(() => toast("Couldn't open the policy"))}
+            />
+          ) : null}
+          <Button label="Close" variant="ghost" onPress={close} />
+        </ScrollView>
       </Sheet>
     </>
   );

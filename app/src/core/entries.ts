@@ -38,6 +38,20 @@ export interface EntryInput {
 export const activeEntries = (s: MoodState): Entry[] =>
   s.entries.filter((e) => !e.deleted).sort((a, b) => compareDateTime(b.timestamp, a.timestamp));
 
+/**
+ * The single newest non-deleted entry (or undefined) in ONE linear pass — the
+ * same value as `activeEntries(s)[0]` without sorting the whole store. Used on
+ * the one-tap log path, which runs on every mood tap, so it must stay O(n).
+ */
+export function latestActiveEntry(s: MoodState): Entry | undefined {
+  let latest: Entry | undefined;
+  for (const e of s.entries) {
+    if (e.deleted) continue;
+    if (!latest || compareDateTime(e.timestamp, latest.timestamp) > 0) latest = e;
+  }
+  return latest;
+}
+
 export const entryById = (s: MoodState, id: string): Entry | undefined => s.entries.find((e) => e.id === id);
 
 export function validateIntensity(v: number | undefined): boolean {
@@ -75,7 +89,7 @@ export function logMood(
 ): { state: MoodState; error: DomainError | null; id?: string; deduped?: boolean } {
   if (!moodById(s, moodId)) return { state: s, error: "unknown_mood" };
   if (!validateIntensity(opts.intensity)) return { state: s, error: "bad_intensity" };
-  const last = activeEntries(s)[0];
+  const last = latestActiveEntry(s);
   if (
     last &&
     last.moods.length === 1 &&

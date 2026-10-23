@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInRight, FadeOut, FadeOutLeft } from "react-native-reanimated";
-import { Button, Confetti, FooterScreen, Icon, palette, radius, space, type } from "../ui";
+import { Button, Confetti, FooterScreen, Icon, feedback, palette, radius, space, type } from "../ui";
 import { activeMoods } from "../core/moods";
 import { logMood } from "../core/entries";
 import { moodStore, useMood } from "../core/data";
@@ -21,6 +21,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const moods = activeMoods(s);
   const [step, setStep] = useState(0);
   const [loggedName, setLoggedName] = useState<string | null>(null);
+  const [loggedId, setLoggedId] = useState<string | null>(null);
   const [burst, setBurst] = useState(0);
 
   const finish = () => {
@@ -38,7 +39,9 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
     const r = logMood(moodStore.get(), moodId, nowISO());
     moodStore.set(r.state);
     analytics.track("core_action", { feature: "log_mood" });
+    feedback("success", "success");
     setLoggedName(name);
+    setLoggedId(moodId);
     setBurst((b) => b + 1);
   };
 
@@ -63,7 +66,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
       </>
     ) : (
       <>
-        <Button label={loggedName ? "Open Floria" : "Skip for now"} size="lg" icon={loggedName ? "check" : undefined} onPress={finish} />
+        <Button label={loggedName ? "Continue" : "Skip for now"} size="lg" icon={loggedName ? "check" : undefined} onPress={finish} />
       </>
     );
 
@@ -90,23 +93,27 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
                 ))}
               </View>
             </>
-          ) : loggedName ? (
-            <Animated.View key="done" entering={FadeIn.duration(220)} style={styles.doneWrap}>
-              <View style={styles.tick}>
-                <Icon name="check" size={44} color={palette.onPrimary} />
-              </View>
-              <Text style={[type.title, styles.center]}>Saved · feeling {loggedName.toLowerCase()}</Text>
-              <Text style={[type.body, styles.sub]}>That's it — one tap. Add notes, tags and reminders whenever you like.</Text>
-            </Animated.View>
           ) : (
-            <Animated.View key="try" exiting={FadeOut.duration(140)} style={styles.body}>
-              <Text style={[type.title, styles.center]}>Try it — tap how you feel</Text>
-              <Text style={[type.body, styles.sub]}>Go on, tap a mood. It saves instantly.</Text>
+            <Animated.View key="try" entering={FadeIn.duration(200)} exiting={FadeOut.duration(140)} style={styles.body}>
+              <Text style={[type.title, styles.center]}>{loggedName ? `Saved · feeling ${loggedName.toLowerCase()}` : "Try it — tap how you feel"}</Text>
+              <Text style={[type.body, styles.sub]}>
+                {loggedName ? "That's it — one tap. Tap another to change it, or Continue." : "Go on, tap a mood. It saves instantly."}
+              </Text>
+              {/* The grid stays put so the tapped mood shows an inline check right
+                  where you pressed — the clearest "it worked" for a first-timer. */}
               <View style={styles.grid}>
                 {moods.slice(0, 5).map((m) => (
-                  <MoodToken key={m.id} mood={m} size={52} onPress={() => firstLog(m.id, m.name)} />
+                  <MoodToken key={m.id} mood={m} size={52} selected={loggedId === m.id} onPress={() => firstLog(m.id, m.name)} />
                 ))}
               </View>
+              {loggedName ? (
+                <Animated.View key="saved" entering={FadeIn.duration(200)} style={styles.savedBanner}>
+                  <View style={styles.savedTick}>
+                    <Icon name="check" size={16} color={palette.onPrimary} />
+                  </View>
+                  <Text style={[type.body, { flex: 1, color: palette.ink }]}>Mood saved. Add notes, tags and reminders whenever you like.</Text>
+                </Animated.View>
+              ) : null}
             </Animated.View>
           )}
         </Animated.View>
@@ -127,7 +134,7 @@ const styles = StyleSheet.create({
   center: { textAlign: "center" },
   sub: { textAlign: "center", color: palette.inkSoft },
   grid: { flexDirection: "row", justifyContent: "space-between", alignSelf: "stretch", marginTop: space.sm },
-  doneWrap: { gap: space.lg, alignItems: "center" },
-  tick: { width: 96, height: 96, borderRadius: 48, backgroundColor: palette.success, alignItems: "center", justifyContent: "center" },
+  savedBanner: { flexDirection: "row", alignItems: "center", gap: space.md, alignSelf: "stretch", backgroundColor: palette.successSoft, borderRadius: radius.lg, padding: space.md, marginTop: space.sm },
+  savedTick: { width: 32, height: 32, borderRadius: 16, backgroundColor: palette.success, alignItems: "center", justifyContent: "center" },
   skip: { borderWidth: 0 },
 });

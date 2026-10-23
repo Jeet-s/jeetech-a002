@@ -8,6 +8,7 @@
  */
 import {
   addDays,
+  compareDateTime,
   dayBucket,
   graceBucket,
   timeOfDay,
@@ -85,12 +86,25 @@ export function bestStreak(s: MoodState, prefs: Prefs): number {
   return best;
 }
 
-/** Non-deleted entries whose day-bucket falls in [from, to] inclusive. */
-export function entriesInRange(s: MoodState, from: DateKey, to: DateKey, prefs: Prefs): Entry[] {
-  return activeEntries(s).filter((e) => {
+/**
+ * Non-deleted entries whose day-bucket falls in [from, to], in STORAGE order
+ * (unsorted). This is the hot path for every aggregation below — sums, counts
+ * and sets don't care about order, and skipping the sort keeps per-render cost
+ * O(n) instead of O(n log n). One linear pass, no intermediate copies.
+ */
+function activeInRange(s: MoodState, from: DateKey, to: DateKey, prefs: Prefs): Entry[] {
+  const out: Entry[] = [];
+  for (const e of s.entries) {
+    if (e.deleted) continue;
     const b = bucketOf(e, prefs);
-    return b >= from && b <= to;
-  });
+    if (b >= from && b <= to) out.push(e);
+  }
+  return out;
+}
+
+/** Non-deleted entries whose day-bucket falls in [from, to] inclusive, newest first (for display lists). */
+export function entriesInRange(s: MoodState, from: DateKey, to: DateKey, prefs: Prefs): Entry[] {
+  return activeInRange(s, from, to, prefs).sort((a, b) => compareDateTime(b.timestamp, a.timestamp));
 }
 
 export const entriesOnDay = (s: MoodState, day: DateKey, prefs: Prefs): Entry[] => entriesInRange(s, day, day, prefs);
@@ -99,7 +113,7 @@ export const entriesOnDay = (s: MoodState, day: DateKey, prefs: Prefs): Entry[] 
 export function averageMood(s: MoodState, from: DateKey, to: DateKey, prefs: Prefs): number | null {
   let sum = 0;
   let n = 0;
-  for (const e of entriesInRange(s, from, to, prefs)) {
+  for (const e of activeInRange(s, from, to, prefs)) {
     const sc = entryScore(s, e, prefs);
     if (sc !== null) {
       sum += sc;
@@ -122,10 +136,45 @@ export function weekSeries(s: MoodState, todayTs: ISODateTime, prefs: Prefs): { 
   });
 }
 
+/** Per-day count + average mood for ONE logged day. */
+export interface DayAgg {
+  count: number;
+  avg: number | null;
+}
+
+/**
+ * Count + average mood for EVERY logged day in a single linear pass over the
+ * store. The Calendar grid used to call `entriesOnDay` + `dayAverage` per cell
+ * (~84 full filter+sort passes over all entries each render), which froze the
+ * JS thread once a journal grew large. Build this map once (memoised on the
+ * store) and every cell / sparkline point is an O(1) lookup instead.
+ */
+export function dayAggregates(s: MoodState, prefs: Prefs): Map<DateKey, DayAgg> {
+  const acc = new Map<DateKey, { count: number; sum: number; n: number }>();
+  for (const e of s.entries) {
+    if (e.deleted) continue;
+    const key = dayBucket(e.timestamp, prefs.dayStartHour);
+    let a = acc.get(key);
+    if (!a) {
+      a = { count: 0, sum: 0, n: 0 };
+      acc.set(key, a);
+    }
+    a.count++;
+    const sc = entryScore(s, e, prefs);
+    if (sc !== null) {
+      a.sum += sc;
+      a.n++;
+    }
+  }
+  const out = new Map<DateKey, DayAgg>();
+  for (const [k, a] of acc) out.set(k, { count: a.count, avg: a.n ? a.sum / a.n : null });
+  return out;
+}
+
 /** Tag usage counts across a range, most-used first. */
 export function topTags(s: MoodState, from: DateKey, to: DateKey, prefs: Prefs, limit = 5): { tagId: string; count: number }[] {
   const counts = new Map<string, number>();
-  for (const e of entriesInRange(s, from, to, prefs)) for (const t of e.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
+  for (const e of activeInRange(s, from, to, prefs)) for (const t of e.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
   return [...counts.entries()]
     .map(([tagId, count]) => ({ tagId, count }))
     .sort((a, b) => b.count - a.count || a.tagId.localeCompare(b.tagId))
@@ -140,7 +189,7 @@ export function timeOfDayBreakdown(s: MoodState, from: DateKey, to: DateKey, pre
     evening: { sum: 0, n: 0 },
     night: { sum: 0, n: 0 },
   };
-  for (const e of entriesInRange(s, from, to, prefs)) {
+  for (const e of activeInRange(s, from, to, prefs)) {
     const sc = entryScore(s, e, prefs);
     const slot = acc[timeOfDay(e.timestamp)];
     slot.n++;
@@ -154,7 +203,7 @@ export function timeOfDayBreakdown(s: MoodState, from: DateKey, to: DateKey, pre
 /** How often each mood was used in a range (for the donut), most-used first. */
 export function moodDistribution(s: MoodState, from: DateKey, to: DateKey, prefs: Prefs): { moodId: string; count: number }[] {
   const counts = new Map<string, number>();
-  for (const e of entriesInRange(s, from, to, prefs)) for (const m of e.moods) counts.set(m.moodId, (counts.get(m.moodId) ?? 0) + 1);
+  for (const e of activeInRange(s, from, to, prefs)) for (const m of e.moods) counts.set(m.moodId, (counts.get(m.moodId) ?? 0) + 1);
   return [...counts.entries()].map(([moodId, count]) => ({ moodId, count })).sort((a, b) => b.count - a.count);
 }
 
@@ -180,7 +229,7 @@ export function tagCorrelations(s: MoodState, from: DateKey, to: DateKey, prefs:
   const overall = averageMood(s, from, to, prefs);
   if (overall === null) return [];
   const acc = new Map<string, { sum: number; n: number }>();
-  for (const e of entriesInRange(s, from, to, prefs)) {
+  for (const e of activeInRange(s, from, to, prefs)) {
     const sc = entryScore(s, e, prefs);
     if (sc === null) continue;
     for (const t of new Set(e.tags)) {
@@ -200,7 +249,7 @@ export function tagCorrelations(s: MoodState, from: DateKey, to: DateKey, prefs:
 export function averageSentiment(s: MoodState, from: DateKey, to: DateKey, prefs: Prefs): number | null {
   let sum = 0;
   let n = 0;
-  for (const e of entriesInRange(s, from, to, prefs)) {
+  for (const e of activeInRange(s, from, to, prefs)) {
     if (e.sentiment) {
       sum += e.sentiment.score;
       n++;
@@ -227,7 +276,7 @@ export interface RangeStats {
 
 /** One concise bundle powering the Insights screen for [from, to]. */
 export function rangeStats(s: MoodState, from: DateKey, to: DateKey, todayTs: ISODateTime, prefs: Prefs): RangeStats {
-  const es = entriesInRange(s, from, to, prefs);
+  const es = activeInRange(s, from, to, prefs);
   const days = new Set(es.map((e) => bucketOf(e, prefs)));
   return {
     from,

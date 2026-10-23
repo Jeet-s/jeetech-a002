@@ -32,7 +32,7 @@ import { MoodToken, IntensityPicker, TagPicker } from "./components";
 import { NoteEditor } from "./NoteEditor";
 import { ERRORS, nowISO, todayKey, relativeDay, timeLabel } from "./shared";
 import { ai } from "../modules/ai";
-import { aiEnabled, handleAiFailure } from "./useAi";
+import { aiEnabled, handleAiFailure, reportAiOutput, AI_DISCLAIMER } from "./useAi";
 
 export type EntryTarget =
   // `seedMoodId`/`seedTags` power press-and-hold quick capture from the Home
@@ -197,13 +197,38 @@ export function EntrySheet({ target, onClose, onPro }: { target: EntryTarget | n
   return (
     <>
       <Sheet visible onClose={onClose} title={editing ? "Edit entry" : target.date && target.date !== todayKey() ? "Backfill entry" : "New entry"}>
-        <ScrollView style={styles.scroll} contentContainerStyle={{ gap: space.lg }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.scroll} contentContainerStyle={{ gap: space.lg }} keyboardShouldPersistTaps="handled" removeClippedSubviews={false} showsVerticalScrollIndicator={false}>
           <View>
-            <Text style={[type.label, styles.lbl]}>How are you feeling? {picked.length > 0 ? `(${picked.length}/${MAX_MOODS_PER_ENTRY})` : ""}</Text>
+            <View style={styles.moodHead}>
+              <Text style={[type.label, styles.lbl]}>How are you feeling?</Text>
+              <Pill
+                label={`${picked.length} of ${MAX_MOODS_PER_ENTRY}`}
+                tone={picked.length ? "primary" : "neutral"}
+              />
+            </View>
             <View style={styles.grid}>
               {moods.map((m) => (
                 <MoodToken key={m.id} mood={m} size={56} selected={picked.some((p) => p.moodId === m.id)} onPress={() => toggleMood(m.id)} />
               ))}
+            </View>
+            {/* Live echo of the current selection — every valid tap adds/removes a
+                chip here, so the toggle always has a visible, lasting result even
+                when the checked token itself is hard to spot. */}
+            <View style={styles.selection}>
+              {picked.length === 0 ? (
+                <Text style={[type.caption, { color: palette.inkMuted }]}>Tap a mood to begin — pick up to {MAX_MOODS_PER_ENTRY}.</Text>
+              ) : (
+                picked.map((pm) => {
+                  const mood = moods.find((m) => m.id === pm.moodId);
+                  if (!mood) return null;
+                  return (
+                    <View key={pm.moodId} style={[styles.selChip, { borderColor: mood.color }]}>
+                      <MoodFace score={mood.score} color={mood.color} size={16} />
+                      <Text style={[type.caption, { color: palette.ink, fontFamily: type.bodyStrong.fontFamily }]} numberOfLines={1}>{mood.name}</Text>
+                    </View>
+                  );
+                })
+              )}
             </View>
           </View>
 
@@ -224,7 +249,7 @@ export function EntrySheet({ target, onClose, onPro }: { target: EntryTarget | n
 
           {tags.length ? (
             <View style={{ gap: space.sm }}>
-              <Text style={[type.label, styles.lbl]}>Tags</Text>
+              <Text style={[type.label, styles.lbl]}>Tags{tagIds.length ? ` · ${tagIds.length} selected` : ""}</Text>
               <TagPicker tags={tags} selected={tagIds} onToggle={toggleTag} />
             </View>
           ) : null}
@@ -243,16 +268,25 @@ export function EntrySheet({ target, onClose, onPro }: { target: EntryTarget | n
               <Icon name="edit" size={18} color={palette.inkMuted} />
             </Tappable>
             {aiOn ? (
-              <View style={styles.aiRow}>
-                <Button label="Suggest tags" icon="sparkle" variant="secondary" size="sm" loading={busy} onPress={suggestTags} />
-                {editing ? <Button label="Analyze mood" icon="sparkle" variant="ghost" size="sm" loading={busy} onPress={analyze} /> : null}
-              </View>
+              <>
+                <View style={styles.aiRow}>
+                  <Button label="Suggest tags" icon="sparkle" variant="secondary" size="sm" loading={busy} onPress={suggestTags} />
+                  {editing ? <Button label="Analyze mood" icon="sparkle" variant="ghost" size="sm" loading={busy} onPress={analyze} /> : null}
+                </View>
+                <Text style={type.caption}>{AI_DISCLAIMER}</Text>
+              </>
             ) : null}
             {sentiment ? (
-              <Pill
-                tone={sentiment.score > 0.15 ? "success" : sentiment.score < -0.15 ? "danger" : "neutral"}
-                label={`Note feels ${sentiment.score > 0.15 ? "positive" : sentiment.score < -0.15 ? "low" : "neutral"} (${sentiment.score.toFixed(2)})`}
-              />
+              <View style={styles.sentimentRow}>
+                <Pill
+                  tone={sentiment.score > 0.15 ? "success" : sentiment.score < -0.15 ? "danger" : "neutral"}
+                  label={`Note feels ${sentiment.score > 0.15 ? "positive" : sentiment.score < -0.15 ? "low" : "neutral"} (${sentiment.score.toFixed(2)})`}
+                />
+                <Tappable label="Report this AI response" sound={null} onPress={() => reportAiOutput("note_sentiment")} style={styles.reportBtn}>
+                  <Icon name="flag" size={13} color={palette.inkMuted} />
+                  <Text style={[type.caption, { color: palette.inkMuted }]}>Report</Text>
+                </Tappable>
+              </View>
             ) : null}
           </View>
 
@@ -292,9 +326,14 @@ export function EntrySheet({ target, onClose, onPro }: { target: EntryTarget | n
 const styles = StyleSheet.create({
   scroll: { maxHeight: 380 },
   lbl: { color: palette.ink },
+  moodHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: space.sm, marginTop: space.sm },
+  selection: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: space.sm, minHeight: 30 },
+  selChip: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: palette.surfaceAlt, borderWidth: 1.5, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
   intRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   noteBox: { flexDirection: "row", alignItems: "center", gap: space.sm, minHeight: 64, backgroundColor: palette.surfaceAlt, borderRadius: radius.md, padding: space.md },
   aiRow: { flexDirection: "row", gap: space.sm, flexWrap: "wrap" },
+  sentimentRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm },
+  reportBtn: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 32, paddingHorizontal: 4 },
   dayChip: { minHeight: 36, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.surface, justifyContent: "center" },
 });

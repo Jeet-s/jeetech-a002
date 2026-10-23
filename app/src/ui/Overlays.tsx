@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Image, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
+import { Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 import Animated, { Easing, FadeInDown, FadeOutDown, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconButton } from "./Button";
@@ -13,14 +13,25 @@ export function Sheet({ visible, title, onClose, children }: { visible: boolean;
   const y = useSharedValue(1);
   useEffect(() => {
     if (visible) play("whoosh", 0.4);
+    // Blur any focused field the instant the sheet starts closing. A still-focused
+    // TextInput that gets unmounted makes its parent ScrollView try to scroll to a
+    // detached child (ViewGroup.offsetRectBetweenParentAndChild → crash), so drop
+    // the keyboard before the subtree below unmounts.
+    else Keyboard.dismiss();
     y.value = visible ? withSpring(0, springs.gentle) : withTiming(1, { duration: 180 });
   }, [visible, y]);
+  // Close path shared by the backdrop, the X button and the hardware back —
+  // always blur first so the focused input is gone before the sheet tears down.
+  const requestClose = () => {
+    Keyboard.dismiss();
+    onClose();
+  };
   const sheet = useAnimatedStyle(() => ({ transform: [{ translateY: y.value * 600 }] }));
   const dim = useAnimatedStyle(() => ({ opacity: withTiming(visible ? 1 : 0, { duration: 200, easing: Easing.out(Easing.quad) }) }));
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={requestClose} statusBarTranslucent>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: palette.scrim }, dim]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
+        <Pressable style={StyleSheet.absoluteFill} onPress={requestClose} accessibilityLabel="Close" />
       </Animated.View>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.bottom} pointerEvents="box-none">
         <Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }, sheet]}>
@@ -28,7 +39,7 @@ export function Sheet({ visible, title, onClose, children }: { visible: boolean;
           {title ? (
             <View style={styles.titleRow}>
               <Text style={[type.title, { flex: 1 }]} accessibilityRole="header">{title}</Text>
-              <IconButton icon="close" label="Close" size={40} onPress={onClose} />
+              <IconButton icon="close" label="Close" size={40} onPress={requestClose} />
             </View>
           ) : null}
           {/* Only mount the body while the sheet is open. The Modal hides its
@@ -38,6 +49,12 @@ export function Sheet({ visible, title, onClose, children }: { visible: boolean;
           {visible ? children : null}
         </Animated.View>
       </KeyboardAvoidingView>
+      {/* The app's ToastHost lives in the root tree — BEHIND this Modal — so a
+          confirmation fired from inside a sheet ("Mood added", "Reminder set")
+          would otherwise be invisible. Mount a host inside the sheet too so the
+          result shows ON TOP of the sheet; both hosts get every message, so it
+          also survives a sheet that closes the instant it fires. */}
+      {visible ? <ToastHost placement="top" /> : null}
     </Modal>
   );
 }
@@ -74,31 +91,39 @@ export function EmptyState({
 }
 
 type ToastMsg = { id: number; text: string; action?: { label: string; onPress: () => void } };
-let push: ((m: Omit<ToastMsg, "id">) => void) | null = null;
+type Pusher = (m: Omit<ToastMsg, "id">) => void;
+// Every mounted host subscribes. The root host (App) and the host each open
+// Sheet mounts both receive the message: while a sheet is open its host shows
+// the toast on top of the sheet, and the root host keeps it alive once the
+// sheet closes. A Set (insertion-ordered) means no host ever misses a toast.
+const listeners = new Set<Pusher>();
 
 /** Show a short confirmation ("Saved", "Deleted · Undo"). Mount <ToastHost/> once in App. */
 export function toast(text: string, action?: ToastMsg["action"]): void {
-  push?.({ text, action });
+  listeners.forEach((fn) => fn({ text, action }));
 }
 
-export function ToastHost({ bottom = 96 }: { bottom?: number }) {
+export function ToastHost({ bottom = 96, placement = "bottom" }: { bottom?: number; placement?: "bottom" | "top" }) {
+  const insets = useSafeAreaInsets();
   const [msg, setMsg] = useState<ToastMsg | null>(null);
   useEffect(() => {
     let n = 0;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    push = (m) => {
+    const push: Pusher = (m) => {
       if (timer) clearTimeout(timer);
       setMsg({ ...m, id: ++n });
       timer = setTimeout(() => setMsg(null), m.action ? 5000 : 2200);
     };
+    listeners.add(push);
     return () => {
-      push = null;
+      listeners.delete(push);
       if (timer) clearTimeout(timer);
     };
   }, []);
   if (!msg) return null;
+  const pos = placement === "top" ? { top: insets.top + space.md } : { bottom };
   return (
-    <Animated.View key={msg.id} entering={FadeInDown.duration(200)} exiting={FadeOutDown.duration(160)} style={[styles.toastWrap, { bottom }]} accessibilityLiveRegion="polite" pointerEvents="box-none">
+    <Animated.View key={msg.id} entering={FadeInDown.duration(200)} exiting={FadeOutDown.duration(160)} style={[styles.toastWrap, pos]} accessibilityLiveRegion="polite" pointerEvents="box-none">
       <View style={styles.toast}>
         <Text style={[type.bodyStrong, { color: "#fff", flex: 1 }]}>{msg.text}</Text>
         {msg.action ? (

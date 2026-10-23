@@ -4,7 +4,7 @@
  * lookup) rather than destroyed, so old entries always resolve.
  */
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Keyboard, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, IconButton, MoodFace, Segmented, Sheet, Tappable, TextField, feedback, palette, radius, space, toast, type } from "../../ui";
 import { activeMoods, addMood, deleteMood, moodInUse, renameMood, reorderMood, setMoodColor, setMoodEmoji, setMoodScore, validateMoodName } from "../../core/moods";
 import { MAX_ACTIVE_MOODS } from "../../core/model";
@@ -63,6 +63,9 @@ export function MoodsSheet({ visible, onClose }: { visible: boolean; onClose: ()
   };
 
   const save = () => {
+    // Blur the Name field before the editor (and its ScrollView) unmounts, so the
+    // list never scrolls to a detached, still-focused input.
+    Keyboard.dismiss();
     const editId = typeof mode === "object" ? mode.id : undefined;
     const vErr = validateMoodName(moodStore.get(), name, editId);
     if (vErr) {
@@ -87,10 +90,14 @@ export function MoodsSheet({ visible, onClose }: { visible: boolean; onClose: ()
       toast("Mood added");
     }
     feedback("success", "success");
-    setMode("list");
+    // Saving a mood finishes the task: close the whole sheet so the result is
+    // unmistakable (toast + the new/updated mood is now live on the Home grid),
+    // rather than dropping back into the list where the change is easy to miss.
+    onClose();
   };
 
   const remove = (id: string) => {
+    Keyboard.dismiss();
     const r = deleteMood(moodStore.get(), id);
     if (r.error) {
       feedback("error", "warning");
@@ -108,7 +115,7 @@ export function MoodsSheet({ visible, onClose }: { visible: boolean; onClose: ()
     <Sheet visible={visible} onClose={onClose} title={mode === "list" ? "Moods" : editing ? "Edit mood" : "New mood"}>
       {mode === "list" ? (
         <>
-          <ScrollView style={{ maxHeight: 400 }} contentContainerStyle={{ gap: space.sm }} showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ maxHeight: 400 }} contentContainerStyle={{ gap: space.sm }} removeClippedSubviews={false} showsVerticalScrollIndicator={false}>
             {moods.map((m, i) => (
               <View key={m.id} style={styles.row}>
                 <MoodFace score={m.score} color={m.color} size={40} />
@@ -125,38 +132,49 @@ export function MoodsSheet({ visible, onClose }: { visible: boolean; onClose: ()
           {moods.length >= MAX_ACTIVE_MOODS ? <Text style={[type.caption, { textAlign: "center" }]}>You've reached {MAX_ACTIVE_MOODS} moods.</Text> : null}
         </>
       ) : (
-        <ScrollView style={{ maxHeight: 440 }} contentContainerStyle={{ gap: space.lg }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        // Fields scroll, but the Save/Delete/Back actions stay PINNED below the
+        // scroll so the primary action is always on screen (never buried under a
+        // long emoji grid). A hand-rolled scroll+footer, kept inside the sheet.
+        <>
+          {/* Live preview is PINNED above the scroll so it's always on screen:
+              every emoji / colour / positivity tap updates this face instantly,
+              a visible effect even while the keyboard is open. The name field no
+              longer autofocuses — the keyboard used to open on top of the emoji
+              and colour pickers, so the tester's taps landed on the keyboard and
+              "did nothing". The user taps Name only when they want to type. */}
           <View style={styles.preview}>
             <MoodFace score={score} color={color} size={72} />
           </View>
-          <TextField label="Name" value={name} onChangeText={(t) => { setName(t); setError(null); }} error={error} maxLength={24} placeholder="e.g. Calm" autoFocus={!editing} />
-          <View style={{ gap: space.sm }}>
-            <Text style={type.label}>Emoji</Text>
-            <View style={styles.emojiGrid}>
-              {EMOJI_CHOICES.map((e) => (
-                <Tappable key={e} label={e} sound="pop" scale={0.9} onPress={() => setEmoji(e)} style={[styles.emojiCell, e === emoji && { backgroundColor: palette.primarySoft, borderColor: palette.primary }]}>
-                  <Text style={{ fontSize: 22 }}>{e}</Text>
-                </Tappable>
-              ))}
+          <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ gap: space.lg }} keyboardShouldPersistTaps="handled" removeClippedSubviews={false} showsVerticalScrollIndicator={false}>
+            <TextField label="Name" value={name} onChangeText={(t) => { setName(t); setError(null); }} error={error} maxLength={24} placeholder="e.g. Calm" />
+            <View style={{ gap: space.sm }}>
+              <Text style={type.label}>Emoji</Text>
+              <View style={styles.emojiGrid}>
+                {EMOJI_CHOICES.map((e) => (
+                  <Tappable key={e} label={e} sound="pop" scale={0.9} onPress={() => setEmoji(e)} style={[styles.emojiCell, e === emoji && { backgroundColor: palette.primarySoft, borderColor: palette.primary }]}>
+                    <Text style={{ fontSize: 22 }}>{e}</Text>
+                  </Tappable>
+                ))}
+              </View>
             </View>
-          </View>
-          <View style={{ gap: space.sm }}>
-            <Text style={type.label}>Colour</Text>
-            <View style={styles.swatchRow}>
-              {COLOR_SWATCHES.map((c) => (
-                <Tappable key={c} label={`Colour ${c}`} sound="pop" scale={0.88} onPress={() => setColor(c)} style={[styles.colorDot, { backgroundColor: c }, c === color && styles.colorOn]} />
-              ))}
+            <View style={{ gap: space.sm }}>
+              <Text style={type.label}>Colour</Text>
+              <View style={styles.swatchRow}>
+                {COLOR_SWATCHES.map((c) => (
+                  <Tappable key={c} label={`Colour ${c}`} sound="pop" scale={0.88} onPress={() => setColor(c)} style={[styles.colorDot, { backgroundColor: c }, c === color && styles.colorOn]} />
+                ))}
+              </View>
             </View>
-          </View>
-          <View style={{ gap: space.sm }}>
-            <Text style={type.label}>Positivity (drives your averages)</Text>
-            <Segmented options={SCORE_OPTS} value={String(score)} onChange={(v) => setScore(Number(v))} />
-            <View style={[styles.scoreBar, { backgroundColor: scoreColor(score) }]} />
-          </View>
+            <View style={{ gap: space.sm }}>
+              <Text style={type.label}>Positivity (drives your averages)</Text>
+              <Segmented options={SCORE_OPTS} value={String(score)} onChange={(v) => setScore(Number(v))} />
+              <View style={[styles.scoreBar, { backgroundColor: scoreColor(score) }]} />
+            </View>
+          </ScrollView>
           <Button label={editing ? "Save mood" : "Add mood"} size="lg" icon="check" onPress={save} />
           {editing ? <Button label="Delete mood" variant="danger" icon="trash" onPress={() => remove((mode as { id: string }).id)} /> : null}
-          <Button label="Back" variant="ghost" sound={null} onPress={() => setMode("list")} style={{ borderWidth: 0 }} />
-        </ScrollView>
+          <Button label="Back" variant="ghost" sound={null} onPress={() => { Keyboard.dismiss(); setMode("list"); }} style={{ borderWidth: 0 }} />
+        </>
       )}
     </Sheet>
   );

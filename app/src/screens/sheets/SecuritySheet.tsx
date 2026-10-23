@@ -96,20 +96,29 @@ export function SecuritySheet({ visible, onClose }: { visible: boolean; onClose:
     feedback("pop", "select");
   };
 
+  // A visible row of dots that fills as digits are typed — so every keypad tap
+  // produces an unmistakable on-screen change even though the field is masked.
   const pinField = (label: string, onSubmit: () => void) => (
-    <TextField
-      label={label}
-      value={pin}
-      onChangeText={(t) => { setPinText(t.replace(/\D/g, "").slice(0, 6)); setError(null); }}
-      error={error}
-      keyboardType="number-pad"
-      secureTextEntry
-      maxLength={6}
-      autoFocus
-      placeholder="••••"
-      returnKeyType="done"
-      onSubmitEditing={onSubmit}
-    />
+    <View style={{ gap: space.md }}>
+      <View style={styles.dots} accessibilityLabel={`${pin.length} of 6 digits entered`}>
+        {Array.from({ length: 6 }, (_, i) => (
+          <View key={i} style={[styles.dot, i < pin.length ? styles.dotOn : null]} />
+        ))}
+      </View>
+      <TextField
+        label={label}
+        value={pin}
+        onChangeText={(t) => { setPinText(t.replace(/\D/g, "").slice(0, 6)); setError(null); }}
+        error={error}
+        keyboardType="number-pad"
+        secureTextEntry
+        maxLength={6}
+        autoFocus
+        placeholder="••••"
+        returnKeyType="done"
+        onSubmitEditing={onSubmit}
+      />
+    </View>
   );
 
   return (
@@ -161,4 +170,8 @@ export function SecuritySheet({ visible, onClose }: { visible: boolean; onClose:
   );
 }
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  dots: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.md },
+  dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: palette.border, backgroundColor: palette.surfaceAlt },
+  dotOn: { borderColor: palette.primary, backgroundColor: palette.primary },
+});

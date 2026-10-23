@@ -4,7 +4,7 @@
  * with a visible autosave state and optional AI tag suggestions. Opened from
  * the entry editor's note field.
  */
-import { KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Icon, IconButton, Pill, fonts, palette, space, type } from "../ui";
 
@@ -26,11 +26,17 @@ export function NoteEditor({
   suggesting?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  // Blur the note field before this modal unmounts, so no scroll container tries
+  // to focus a detached input on the way out.
+  const close = () => {
+    Keyboard.dismiss();
+    onClose();
+  };
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} animationType="slide" onRequestClose={close} statusBarTranslucent>
       <View style={[styles.root, { paddingTop: insets.top + space.sm }]}>
         <View style={styles.header}>
-          <IconButton icon="chevronLeft" label="Back to entry" size={40} onPress={onClose} />
+          <IconButton icon="chevronLeft" label="Back to entry" size={40} onPress={close} />
           <Text style={[type.heading, { flex: 1 }]}>Note</Text>
           {saveState === "saving" ? <Pill label="Saving…" tone="neutral" /> : saveState === "saved" ? <Pill label="Saved" tone="success" icon={<Icon name="check" size={13} color={palette.success} />} /> : null}
         </View>
@@ -52,7 +58,7 @@ export function NoteEditor({
               {onSuggestTags ? (
                 <Button label="Suggest tags" icon="sparkle" variant="secondary" size="sm" loading={suggesting} onPress={onSuggestTags} />
               ) : null}
-              <Button label="Done" icon="check" size="sm" onPress={onClose} />
+              <Button label="Done" icon="check" size="sm" onPress={close} />
             </View>
           </View>
         </KeyboardAvoidingView>

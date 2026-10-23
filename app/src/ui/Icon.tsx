@@ -39,6 +39,7 @@ export const PATHS = {
   trendUp: "M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z",
   trendDown: "M16 18l2.29-2.29-4.88-4.88-4 4L2 7.41 3.41 6l6 6 4-4 6.3 6.29L22 12v6z",
   minus: "M19 13H5v-2h14v2z",
+  flag: "M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z",
 } as const;
 export type IconName = keyof typeof PATHS;
 

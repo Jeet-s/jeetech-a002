@@ -1,20 +1,26 @@
 {
   "expo": {
-    "name": "Floria Mood Journal — Tiny Mood Tap",
+    "name": "Floria: Mood Journal & Tracker",
     "slug": "floria-mood-journal-tiny-mood-tap",
-    "version": "1.0.0",
+    "version": "1.0.10",
     "orientation": "portrait",
     "android": {
       "package": "com.jeetech.a002",
-      "versionCode": 1,
+      "versionCode": 11,
       "permissions": [],
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.SYSTEM_ALERT_WINDOW"
-      ]
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/store/adaptive-foreground.png",
+        "backgroundColor": "#12a9bf"
+      },
+      "googleServicesFile": "./google-services.json"
     },
     "scheme": "floria-mood-journal-tiny-mood-tap",
-    "userInterfaceStyle": "light"
+    "userInterfaceStyle": "light",
+    "icon": "./assets/store/icon.png"
   }
 }

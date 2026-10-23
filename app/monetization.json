@@ -32,9 +32,13 @@
     },
     {
       "sku": "pro_yearly",
-      "period": "P1M",
+      "period": "P1Y",
       "priceUsd": 29.99,
       "trialDays": 14
     }
-  ]
+  ],
+  "legal": {
+    "privacyUrl": "https://jeet-s.github.io/jeetech-a002/privacy.html",
+    "termsUrl": "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+  }
 }

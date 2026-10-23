@@ -131,7 +131,7 @@ export function RemindersSheet({ visible, onClose }: { visible: boolean; onClose
           {reminders.length === 0 ? (
             <EmptyState icon="bell" title="No reminders yet" body="Gentle nudges, never nags. Add a morning check-in or an evening reflection." />
           ) : (
-            <ScrollView style={{ maxHeight: 380 }} contentContainerStyle={{ gap: space.sm }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ maxHeight: 380 }} contentContainerStyle={{ gap: space.sm }} removeClippedSubviews={false} showsVerticalScrollIndicator={false}>
               {reminders.map((r) => (
                 <View key={r.id} style={styles.row}>
                   <Tappable label={`Edit reminder ${describe(r)}`} onPress={() => openEditor(r)} scale={0.99} style={{ flex: 1 }}>
@@ -148,45 +148,50 @@ export function RemindersSheet({ visible, onClose }: { visible: boolean; onClose
           <Button label="Add reminder" icon="plus" size="lg" onPress={() => openEditor()} />
         </>
       ) : (
-        <ScrollView style={{ maxHeight: 440 }} contentContainerStyle={{ gap: space.lg }} showsVerticalScrollIndicator={false}>
-          <View style={styles.timeRow}>
-            <Stepper label="Hour" value={String(hour).padStart(2, "0")} onDec={() => setHour((h) => (h + 23) % 24)} onInc={() => setHour((h) => (h + 1) % 24)} />
-            <Stepper label="Minute" value={String(minute).padStart(2, "0")} onDec={() => setMinute((m) => (m + 55) % 60)} onInc={() => setMinute((m) => (m + 5) % 60)} />
-          </View>
-          <Text style={[type.caption, { textAlign: "center" }]}>{hourly ? "Starts at " : "At "}{clockLabel(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`)}</Text>
-
-          <View style={{ gap: space.sm }}>
-            <Text style={type.label}>Repeat on (none = every day)</Text>
-            <View style={styles.daysRow}>
-              {DAYS.map((d, i) => {
-                const on = days.includes(i);
-                return (
-                  <Tappable key={i} label={`Day ${d}`} role="checkbox" accessibilityState={{ checked: on }} sound="pop" onPress={() => setDays((ds) => (ds.includes(i) ? ds.filter((x) => x !== i) : [...ds, i]))} style={[styles.dayBtn, on && { backgroundColor: palette.primary, borderColor: palette.primary }]}>
-                    <Text style={[type.label, { color: on ? palette.onPrimary : palette.ink }]}>{d}</Text>
-                  </Tappable>
-                );
-              })}
+        // Time/day pickers scroll; the Add/Save/Delete/Back actions stay PINNED
+        // below so the primary action is always reachable (never below the fold
+        // of a long picker list).
+        <>
+          <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ gap: space.lg }} removeClippedSubviews={false} showsVerticalScrollIndicator={false}>
+            <View style={styles.timeRow}>
+              <Stepper label="Hour" value={String(hour).padStart(2, "0")} onDec={() => setHour((h) => (h + 23) % 24)} onInc={() => setHour((h) => (h + 1) % 24)} />
+              <Stepper label="Minute" value={String(minute).padStart(2, "0")} onDec={() => setMinute((m) => (m + 55) % 60)} onInc={() => setMinute((m) => (m + 5) % 60)} />
             </View>
-          </View>
+            <Text style={[type.caption, { textAlign: "center" }]}>{hourly ? "Starts at " : "At "}{clockLabel(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`)}</Text>
 
-          <Toggle label="Repeat through the day" description="Nudge every so often within a window" value={hourly} onChange={setHourly} />
-          {hourly ? (
-            <>
-              <View style={styles.timeRow}>
-                <Stepper label="Until" value={`${String(endHour).padStart(2, "0")}:00`} onDec={() => setEndHour((h) => Math.max(hour + 1, h - 1))} onInc={() => setEndHour((h) => Math.min(23, h + 1))} />
+            <View style={{ gap: space.sm }}>
+              <Text style={type.label}>Repeat on (none = every day)</Text>
+              <View style={styles.daysRow}>
+                {DAYS.map((d, i) => {
+                  const on = days.includes(i);
+                  return (
+                    <Tappable key={i} label={`Day ${d}`} role="checkbox" accessibilityState={{ checked: on }} sound="pop" onPress={() => setDays((ds) => (ds.includes(i) ? ds.filter((x) => x !== i) : [...ds, i]))} style={[styles.dayBtn, on && { backgroundColor: palette.primary, borderColor: palette.primary }]}>
+                      <Text style={[type.label, { color: on ? palette.onPrimary : palette.ink }]}>{d}</Text>
+                    </Tappable>
+                  );
+                })}
               </View>
-              <View style={{ gap: space.sm }}>
-                <Text style={type.label}>Every</Text>
-                <Segmented options={[{ value: "30", label: "30 min" }, { value: "60", label: "1 hour" }, { value: "120", label: "2 hours" }]} value={String(interval)} onChange={(v) => setIntervalMin(Number(v))} />
-              </View>
-            </>
-          ) : null}
+            </View>
+
+            <Toggle label="Repeat through the day" description="Nudge every so often within a window" value={hourly} onChange={setHourly} />
+            {hourly ? (
+              <>
+                <View style={styles.timeRow}>
+                  <Stepper label="Until" value={`${String(endHour).padStart(2, "0")}:00`} onDec={() => setEndHour((h) => Math.max(hour + 1, h - 1))} onInc={() => setEndHour((h) => Math.min(23, h + 1))} />
+                </View>
+                <View style={{ gap: space.sm }}>
+                  <Text style={type.label}>Every</Text>
+                  <Segmented options={[{ value: "30", label: "30 min" }, { value: "60", label: "1 hour" }, { value: "120", label: "2 hours" }]} value={String(interval)} onChange={(v) => setIntervalMin(Number(v))} />
+                </View>
+              </>
+            ) : null}
+          </ScrollView>
 
           {error ? <Text style={[type.caption, { color: palette.danger }]}>{error}</Text> : null}
           <Button label={editing ? "Save reminder" : "Add reminder"} size="lg" icon="check" onPress={save} />
           {editing ? <Button label="Delete reminder" variant="danger" icon="trash" onPress={() => remove((mode as { id: string }).id)} /> : null}
           <Button label="Back" variant="ghost" sound={null} onPress={() => setMode("list")} style={{ borderWidth: 0 }} />
-        </ScrollView>
+        </>
       )}
     </Sheet>
   );

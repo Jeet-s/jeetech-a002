@@ -4,7 +4,7 @@ import Animated, { Easing, FadeInDown, FadeOutDown, useAnimatedStyle, useSharedV
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconButton } from "./Button";
 import { Icon, type IconName } from "./Icon";
-import { palette, radius, shadowStrong, space, springs, type } from "./theme";
+import { palette, radius, shadowStrong, space, springs, type, isDark } from "./theme";
 import { play } from "../audio/sfx";
 
 /** Bottom sheet over a dimmed backdrop — for add/edit forms, pickers and the Pro offer. */
@@ -95,7 +95,7 @@ export function ToastHost({ bottom = 96 }: { bottom?: number }) {
   if (!msg) return null;
   return (
     <Animated.View key={msg.id} entering={FadeInDown.duration(200)} exiting={FadeOutDown.duration(160)} style={[styles.toast, { bottom }]} accessibilityLiveRegion="polite">
-      <Text style={[type.bodyStrong, { color: "#fff", flex: 1 }]}>{msg.text}</Text>
+      <Text style={[type.bodyStrong, { color: isDark ? palette.bg : "#fff", flex: 1 }]}>{msg.text}</Text>
       {msg.action ? (
         <Pressable
           accessibilityRole="button"
@@ -106,7 +106,7 @@ export function ToastHost({ bottom = 96 }: { bottom?: number }) {
             setMsg(null);
           }}
         >
-          <Text style={[type.button, { color: "#A5B4FC" }]}>{msg.action.label}</Text>
+          <Text style={[type.button, { color: isDark ? palette.primaryDark : palette.primarySoft }]}>{msg.action.label}</Text>
         </Pressable>
       ) : null}
     </Animated.View>
