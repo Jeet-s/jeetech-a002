@@ -64,9 +64,123 @@
     },
     {
       "client_info": {
+        "mobilesdk_app_id": "1:304027183289:android:d592ea0d040c05fddbd368",
+        "android_client_info": {
+          "package_name": "com.jeetech.arrowpuzzle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjBPuqP28GFcM-LtGl5g3yjHl0DNc0y6o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:304027183289:android:524427e2e4e7fbaadbd368",
+        "android_client_info": {
+          "package_name": "com.jeetech.auctionleague"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjBPuqP28GFcM-LtGl5g3yjHl0DNc0y6o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:304027183289:android:b1880f60df6a0225dbd368",
+        "android_client_info": {
+          "package_name": "com.jeetech.footballauctionwc"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjBPuqP28GFcM-LtGl5g3yjHl0DNc0y6o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:304027183289:android:a32cf4154049dae2dbd368",
         "android_client_info": {
           "package_name": "com.jeetech.g002"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjBPuqP28GFcM-LtGl5g3yjHl0DNc0y6o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:304027183289:android:04f1116cacf7bec1dbd368",
+        "android_client_info": {
+          "package_name": "com.jeetech.gadgetrun"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjBPuqP28GFcM-LtGl5g3yjHl0DNc0y6o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:304027183289:android:692464ed8e15caabdbd368",
+        "android_client_info": {
+          "package_name": "com.jeetech.kabaddiauctionleague"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjBPuqP28GFcM-LtGl5g3yjHl0DNc0y6o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:304027183289:android:330fdf72a15557d1dbd368",
+        "android_client_info": {
+          "package_name": "com.jeetech.kentadash"
         }
       },
       "oauth_client": [],

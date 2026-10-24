@@ -115,14 +115,17 @@ export function SettingsScreen({ bottomInset, onPro }: { bottomInset: number; on
           <>
             <SectionHeader title="Account" />
             <Card padded={false} style={styles.group}>
-              {/* Always opens the sign-in sheet directly — the email-code step is
-                  never hidden behind the paywall. Syncing across phones is the Pro
-                  perk; creating the account and backing up is reachable here. */}
+              {/* Sign-in is ALWAYS optional: Floria is fully usable — and fully
+                  reviewable — without an account (everything is saved on this
+                  phone). Signing in only adds cloud backup/sync across phones.
+                  The entry is framed as optional, never as a required login
+                  wall, so a Play reviewer is never funnelled into the email-code
+                  step as if it gated the app. */}
               <ListItem
                 icon="cloud"
-                title={user && !user.anonymous ? "Account & cloud backup" : "Sign in to back up & sync"}
-                subtitle={user && !user.anonymous ? user.email ?? "Signed in" : "Email-code sign-in · no account needed to use Floria"}
-                trailing={user && !user.anonymous ? <Pill label="Synced" tone="success" /> : undefined}
+                title={user && !user.anonymous ? "Account & cloud backup" : "Cloud backup & sync"}
+                subtitle={user && !user.anonymous ? user.email ?? "Signed in" : "Optional · email-code sign-in to sync across phones (Pro)"}
+                trailing={user && !user.anonymous ? <Pill label="Synced" tone="success" /> : <Pill label="Optional" />}
                 onPress={() => setSheet("account")}
               />
               {user && !user.anonymous ? (
@@ -138,6 +141,11 @@ export function SettingsScreen({ bottomInset, onPro }: { bottomInset: number; on
                 />
               ) : null}
             </Card>
+            {user && !user.anonymous ? null : (
+              <Text style={styles.accountNote}>
+                No account needed — Floria works fully without signing in. Your journal stays saved on this phone; sign in only to back up and sync across phones.
+              </Text>
+            )}
           </>
         ) : null}
 
@@ -251,6 +259,7 @@ export function SettingsScreen({ bottomInset, onPro }: { bottomInset: number; on
 
 const styles = StyleSheet.create({
   group: { paddingHorizontal: space.lg },
+  accountNote: { ...type.caption, color: palette.inkSoft, paddingHorizontal: space.lg, marginTop: space.sm },
   footer: { alignItems: "center", gap: 2, marginTop: space.sm },
   privRow: { flexDirection: "row", gap: space.sm },
 });

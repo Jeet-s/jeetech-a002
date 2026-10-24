@@ -105,6 +105,8 @@ async function api<T>(path: string, init: { method?: string; body?: unknown } = 
 }
 
 let pendingEmail = "";
+/** Store reviewers sign in with this account and a fixed code checked by the server (Play/App Store need reusable credentials). */
+const REVIEW_EMAIL = "review@jeetechstudio.in";
 
 export const cloud = {
   /** True when this build has cloud saving switched on (cloud.json). */
@@ -128,6 +130,7 @@ export const cloud = {
   /** Step 1: email a 6-digit code. Attaches to the current anonymous account when there is one. */
   async signIn(email: string): Promise<void> {
     pendingEmail = email.trim().toLowerCase();
+    if (pendingEmail === REVIEW_EMAIL) return; // no email is sent — the reviewer enters the fixed code
     await load();
     if (session?.user.is_anonymous) {
       try {
@@ -145,6 +148,10 @@ export const cloud = {
   async verifyCode(code: string): Promise<{ switched: boolean }> {
     const before = session?.user.id;
     const token6 = code.replace(/\D/g, "");
+    if (pendingEmail === REVIEW_EMAIL) {
+      await save(asSession(await api<Record<string, unknown>>("/review-login", { body: { email: pendingEmail, code: token6 } })));
+      return { switched: !!before && before !== session!.user.id };
+    }
     let j: Record<string, unknown>;
     try {
       j = await auth("/verify", { type: "email_change", email: pendingEmail, token: token6 });
