@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, StyleSheet, Linking, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import Animated, { FadeIn } from "react-native-reanimated";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -120,7 +119,10 @@ function Main() {
   const bottom = TAB_BAR_HEIGHT;
   return (
     <View style={styles.root}>
-      <Animated.View key={tab} entering={FadeIn.duration(180)} style={styles.root}>
+      {/* Route container stays a plain View: an `entering` animation on an
+          App-level/tab container paints blank frames (and can stick blank) on
+          Android between screens — animate content inside each screen instead. */}
+      <View style={styles.root}>
         {tab === "home" ? (
           <HomeScreen bottomInset={bottom} onPro={openPro} onOpenSettings={() => setTab("settings")} />
         ) : tab === "calendar" ? (
@@ -130,7 +132,7 @@ function Main() {
         ) : (
           <SettingsScreen bottomInset={bottom} onPro={openPro} />
         )}
-      </Animated.View>
+      </View>
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       <ProSheet visible={!!pro} from={pro ?? ""} onClose={closePro} />
       <ToastHost bottom={TAB_BAR_HEIGHT + insets.bottom + banner + 12} />

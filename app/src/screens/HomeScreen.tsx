@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-reanimated";
+import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
 import {
   Button,
   Card,
@@ -210,10 +210,11 @@ export function HomeScreen({ bottomInset, onPro, onOpenSettings }: { bottomInset
               </View>
 
               {just && justMood ? (
-                // Keyed by the per-tap nonce so EVERY mood tap re-mounts this
-                // cleanly (one crossfade, never two overlapping) — the screen
-                // visibly acknowledges each tap, even a de-duped re-tap.
-                <Animated.View key={just.n} entering={FadeInDown.duration(220)}>
+                // Stable (unkeyed) so it fades in once and then updates in place —
+                // a keyed per-tap remount can stick blank on Android. Each tap is
+                // still acknowledged: the grid's selection badge re-animates and
+                // this card's mood face + copy update to the new entry.
+                <Animated.View entering={FadeInDown.duration(220)}>
                   <Tappable label={`Logged as ${justMood.name}. Add a note`} onPress={() => openNote(just.id)} style={styles.confirm}>
                     <View style={styles.confirmCheck}>
                       <Icon name="check" size={15} color="#fff" />
@@ -267,7 +268,7 @@ export function HomeScreen({ bottomInset, onPro, onOpenSettings }: { bottomInset
                 test. A heavy logging day shows the latest MAX_TODAY_ROWS here and
                 points the rest to Calendar (where the full day lives). */}
             {todays.slice(0, MAX_TODAY_ROWS).map((e) => (
-              <Animated.View key={e.id} layout={LinearTransition.duration(200)} entering={FadeIn.duration(200)}>
+              <Animated.View key={e.id} layout={LinearTransition.duration(200)}>
                 <EntryRow s={s} entry={e} mask={s.prefs.anonymousMode} onPress={() => setTarget({ kind: "edit", id: e.id })} onDelete={() => removeEntry(e.id)} />
               </Animated.View>
             ))}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
 import { Canvas, Group, RoundedRect, Circle } from "@shopify/react-native-skia";
 import { Easing, useDerivedValue, useSharedValue, withTiming, type SharedValue } from "react-native-reanimated";
@@ -32,7 +32,10 @@ function Particle({ p, t, ox, oy }: { p: P; t: SharedValue<number>; ox: number; 
  * (trigger 0 = idle) rather than when the moment happens.
  * Use sparingly on real milestones: a streak record, finishing every task today, unlocking Pro.
  */
-export function Confetti({ trigger, count = 70, origin }: { trigger: number; count?: number; origin?: { x: number; y: number } }) {
+// React.memo so a parent re-render (every mood tap, every store change) never
+// repaints this Skia <Canvas> — dozens of redraws per tap wedge the JS thread.
+// Only a changed `trigger`/`count`/`origin` fires a fresh burst.
+export const Confetti = memo(function Confetti({ trigger, count = 70, origin }: { trigger: number; count?: number; origin?: { x: number; y: number } }) {
   const { width, height } = useWindowDimensions();
   // Starts "finished" (every particle faded out) so the canvas can stay mounted: creating a Skia
   // canvas at the moment of a milestone stalls the frame the user is watching.
@@ -75,4 +78,4 @@ export function Confetti({ trigger, count = 70, origin }: { trigger: number; cou
       </Canvas>
     </View>
   );
-}
+});

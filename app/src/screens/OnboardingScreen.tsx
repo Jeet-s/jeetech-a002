@@ -5,7 +5,7 @@
  */
 import { useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeInRight, FadeOut, FadeOutLeft } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { Button, Confetti, FooterScreen, Icon, feedback, palette, radius, space, type } from "../ui";
 import { activeMoods } from "../core/moods";
 import { logMood } from "../core/entries";
@@ -73,7 +73,9 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
   return (
     <>
       <FooterScreen top={top} footer={footer}>
-        <Animated.View key={step} entering={FadeInRight.duration(260)} exiting={FadeOutLeft.duration(140)} style={styles.body}>
+        {/* Step container is a plain View: a keyed `entering` here remounts each
+            step and can stick blank on Android. Step 2 animates its own content. */}
+        <View style={styles.body}>
           {step === 0 ? (
             <>
               <Image source={art.onboarding_welcome} style={styles.art} resizeMode="contain" accessibilityIgnoresInvertColors />
@@ -88,8 +90,10 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
               <Text style={[type.title, styles.center]}>Your starter moods</Text>
               <Text style={[type.body, styles.sub]}>Five to begin with. Rename them, pick emoji and colours, or add your own anytime in Settings.</Text>
               <View style={styles.grid}>
+                {/* Tapping any starter mood accepts them and goes to the try step —
+                    the control is live, not a dead preview tap. */}
                 {moods.slice(0, 5).map((m) => (
-                  <MoodToken key={m.id} mood={m} size={52} onPress={() => {}} />
+                  <MoodToken key={m.id} mood={m} size={52} onPress={next} />
                 ))}
               </View>
             </>
@@ -116,7 +120,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
               ) : null}
             </Animated.View>
           )}
-        </Animated.View>
+        </View>
       </FooterScreen>
       <Confetti trigger={burst} />
     </>

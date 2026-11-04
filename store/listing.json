@@ -7,30 +7,27 @@
       "mood tracker emoji"
     ]
   },
-  "title": "Floria: Mood Journal & Tracker",
+  "title": "Floria Mood Journal: Tracker",
   "category": "Health & Fitness",
   "keywords": [
     "floria mood journal",
-    "mood journal",
     "mood journal app free",
     "mood tracker emoji",
     "emoji mood tracker",
-    "private mood diary",
+    "mood journal",
     "mood journey",
-    "anxiety tracker mood journal",
-    "mood calendar",
-    "weekly mood insights"
+    "mood diary",
+    "mood tracker with notes"
   ],
-  "release_notes": "What’s new\n• Ultra‑fast one‑tap emoji logging with undo\n• Custom moods, tags, and optional intensity\n• Fair streaks with day start and grace window\n• Calendar with search and backfill\n• Multiple reminders with snooze\n• Weekly insights with optional AI note analysis (see disclosure in app)\n• Encrypted local backups, version history, and restore preview\n• Free CSV/JSON export; Pro adds styled PDF/CSV and themes\n• Security lock (PIN/biometric) and privacy screen\n• Light, unobtrusive ads in Settings; removed with Pro\nBug fixes and performance improvements throughout.",
-  "content_rating": "Everyone",
-  "full_description": "Floria mood journal puts one‑tap logging first so you can capture how you feel in under a second and see clear weekly highlights without clutter. It’s private by default, works offline, and doesn’t require an account.\n\nWhy Floria\n• One tap to log a mood with your chosen emojis\n• Optional notes, tags, and intensity for richer context\n• Weekly highlights that stay simple and useful\n• Private on your device with a free lock and encrypted backups\n• Thoughtful reminders that fit your day\n\nCore features\n• One‑tap emoji mood logging: Tap an emoji to save instantly with an undo option.\n• Custom moods and colors: Add, rename, reorder; choose emoji and set an optional 1–10 intensity slider.\n• Multiple moods per entry: Add up to three moods plus unlimited custom tags (e.g., Work, Sleep).\n• Quick note editor: Inline expand to full screen; supports headings, bold/italic, and lists with fast autosave.\n• Fair streaks: Set your day start (0–6 AM) and a grace window to avoid unfair breaks; handles timezones/DST.\n• Calendar & history: Month view with color intensity, search by text/tags/emoji, and backfill past days.\n• Reminders your way: Multiple times, day‑of‑week schedules, and hourly ranges with snooze options.\n• Insights & weekly summary: Week/month/custom ranges with weighted averages, top tags, time‑of‑day patterns. Optional note analysis can add sentiment to summaries (see AI disclosure below).\n• Backups & restore: Create encrypted local backups, schedule automatic backups, keep version history, and restore with a preview and audit log.\n• Export your data: Free CSV/JSON exports with timestamps, moods, intensity, tags, sentiment scores, note length, and media references. Pro adds styled PDF/CSV with filters and charts.\n• Security lock: Free PIN/biometric lock with auto‑lock timer and a clear forgot‑PIN flow (restore from encrypted backup).\n• Privacy screen & anonymous mode: Mask previews, wipe data with confirmations, and see exactly how your data is protected.\n• Themes & accessibility: System dark mode, high‑contrast option, large tap targets, and support for Dynamic Type.\n\nWhat’s free\n• All core logging: moods, multi‑mood, tags, rich notes\n• Calendar, streaks, weekly/monthly insights\n• Multiple reminders with snooze\n• Security lock (PIN/biometric)\n• Local encrypted backups and restores\n• Basic CSV/JSON exports\n• Light, unobtrusive ads in Settings (removed in Pro)\n\nWhat Pro adds\n• Advanced insights over custom ranges (deeper tag/time‑of‑day views)\n• Styled PDF/CSV reports with filters and charts\n• Custom themes and icon packs\n• Higher media limits and batch media reference export\n• Cloud backup/sync with email code login (encrypted in transit and at rest)\n• Removes ads, priority support, and early access toggles\n\nPrivacy & data\n• Works offline; no account required to use the app\n• Your data stays on your device; you can export it anytime\n• Encrypted local backups with your passphrase\n• Cloud backup/sync (Pro) uses encryption in transit and at rest\n\nAI disclosure\n• Optional only: If you choose, you can request sentiment/summary of selected note text.\n• When you request analysis, the note text you select is sent to OpenAI via our server to process your request; it is not used for training by us.\n• You can use the app fully without AI features.\n\nSubscriptions & purchase\n• Clear monthly/yearly options with free trial where offered and a lifetime unlock\n• See price and period before purchase; manage or cancel in your store account settings\n• Restore purchases anytime from Settings\n\nFriendly reminders, instant saves, and trustworthy privacy make it easy to build a mood habit you’ll keep. Try Floria today and log your first mood in seconds.",
+  "release_notes": "Faster one-tap mood logging with a clear Saved state and undo. Improved streak handling with day-start and grace window, calendar polish, reminder fixes, and general stability improvements.",
+  "content_rating": "Teen",
+  "full_description": "Floria Mood Journal is a quick, calm way to log how you feel. Tap an emoji, see a clear \"Saved\" confirmation, and get on with your day. Add a note or tags only when you want to.\n\nQUICK, FLEXIBLE LOGGING\n• One-tap emoji mood tracker: log several times a day, each entry timestamped\n• Undo right after saving\n• Customize your moods: rename, change emoji and colors, reorder\n• Pick up to 3 moods per entry and add an optional 1–10 intensity\n• Tags such as Work, Sleep or Family, with a simple tag manager\n• Quick note editor with a full-screen mode and autosave\n\nSEE YOUR PATTERNS\nYour mood journal turns into easy-to-read trends.\n• Monthly calendar with colors showing how each day felt\n• Search entries by text, tag or emoji\n• Add or edit missed days from the past\n• Weekly and monthly insights: averages, top tags and time-of-day patterns\n• Optional AI summary of your notes, only when you ask for it\n\nFAIR STREAKS AND GENTLE REMINDERS\n• Set your own day start time and a late-entry grace window, so a late-night entry doesn't break your streak\n• Multiple reminders on the days and times you choose, with snooze\n\nPRIVATE BY DESIGN\nFloria Mood Journal keeps your entries on your device. Signing in is optional.\n• PIN and biometric app lock\n• Backup and restore your data\n• Export your entries as CSV or JSON\n• Optional sign-in with an email code to back up and sync your own entries across devices; data is encrypted in transit and at rest\n• AI features need an internet connection. The text you submit is sent to our server and processed by our AI provider. Every AI reply has a \"Report this AI response\" button\n• You can delete your account and data in the app (Settings → Account) or on the web\n\nFREE AND PRO\nFloria Mood Journal is free to use for mood logging, notes, tags, calendar, insights, reminders, app lock, backup and export. The free version shows ads. Pro, available as a one-time purchase or subscription through Google Play, removes ads. Prices and billing terms are shown before you buy, and you can restore purchases at any time.\n\nNote: this emoji mood tracker is for personal self-reflection. It is not a medical device and does not diagnose, treat or replace professional care. If you are struggling, please talk to a qualified professional.\n\nDownload Floria Mood Journal and log your first mood in seconds.",
   "screenshots_plan": [
-    "One tap to log",
-    "Your emoji, your colors",
-    "Beautiful mood calendar",
-    "Clear weekly highlights",
-    "Free lock and backups",
-    "Export and Pro reports"
+    "Log your mood in one tap",
+    "Simple monthly mood calendar",
+    "Clear weekly insights",
+    "Reminders that fit your day",
+    "Lock, backup and export"
   ],
-  "short_description": "Floria mood journal with emoji mood tracker—private, fast, and flexible."
+  "short_description": "Floria Mood Journal: emoji mood tracker with notes, tags and weekly insights"
 }
